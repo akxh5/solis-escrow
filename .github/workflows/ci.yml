@@ -74,7 +74,11 @@ jobs:
       - name: Install stellar-cli
         run: cargo install --locked stellar-cli --features opt
 
+      - name: Install WASM target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Build WASM contract
+        working-directory: contracts/escrow_vault
         run: stellar contract build
 
       - name: Upload WASM artifact
