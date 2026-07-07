@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  # Pin the Soroban SDK version so CI is reproducible
+  SOROBAN_SDK_VERSION: "25.3.1"
+
+jobs:
+  # ─── Job 1: Rust contract unit tests ────────────────────────────────────────
+  contract-tests:
+    name: Soroban Contract Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      # Cache ~/.cargo/registry and the workspace target dir for fast re-runs
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # cargo test uses the host target (x86_64-unknown-linux-gnu) with
+      # testutils feature — no WASM compilation needed for unit tests.
+      - name: Run Soroban unit tests
+        working-directory: contracts/escrow_vault
+        run: cargo test --features soroban-sdk/testutils -- --nocapture
+
+  # ─── Job 2: Verify WASM contract builds cleanly ─────────────────────────────
+  contract-build:
+    name: Soroban Contract Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-wasm-${{ hashFiles('**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-wasm-
+
+      - name: Install stellar-cli
+        run: cargo install --locked stellar-cli --features opt
+
+      - name: Build WASM contract
+        run: stellar contract build
+
+      - name: Upload WASM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: escrow-vault-wasm
+          path: target/wasm32v1-none/release/escrow_vault.wasm
+          retention-days: 7
+
+  # ─── Job 3: Frontend type-check ──────────────────────────────────────────────
+  frontend-typecheck:
+    name: Next.js TypeScript Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type-check
+        run: npx tsc --noEmit
+
+      - name: Next.js build check
+        run: npm run build
