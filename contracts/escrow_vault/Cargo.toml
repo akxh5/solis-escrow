@@ -18,11 +18,12 @@ codegen-units    = 1
 lto              = true      # link-time optimisation — further shrinks the .wasm
 
 [dependencies]
-soroban-sdk = "22"
+soroban-sdk = "25.3.1"
 
 [dev-dependencies]
-soroban-sdk = { version = "22", features = ["testutils"] }
+soroban-sdk = { version = "25.3.1", features = ["testutils"] }
 
 [features]
-# Uncomment to generate bindings for JS/TS consumers via stellar contract bindings
-# testutils = ["soroban-sdk/testutils"]
+# Enable Soroban test utilities (Env simulation, Address::generate, Ledger helpers).
+# Used by: cargo test --features soroban-sdk/testutils
+testutils = ["soroban-sdk/testutils"]

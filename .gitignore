@@ -42,7 +42,6 @@ next-env.d.ts
 
 # Rust build artifacts
 target/
-Cargo.lock
 
 # Backup files
 src/app/_layout_backup.tsx
