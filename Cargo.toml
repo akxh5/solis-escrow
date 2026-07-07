@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members  = ["contracts/escrow_vault"]
+
+# ── Release profile ────────────────────────────────────────────────────────────
+# IMPORTANT: Cargo ignores [profile.*] in member crate Cargo.toml files.
+# Profile settings MUST be declared here in the workspace root manifest.
+# stellar-cli enforces overflow-checks = true before allowing WASM compilation.
+[profile.release]
+opt-level        = "z"     # minimise binary size (critical for on-chain storage costs)
+overflow-checks  = true    # required by stellar-cli — prevents silent integer overflow
+debug            = 0       # no debug symbols in WASM output
+debug-assertions = false
+strip            = "symbols"
+panic            = "abort"  # no stack unwinding in WASM runtimes
+codegen-units    = 1
+lto              = true    # link-time optimisation — further shrinks .wasm
