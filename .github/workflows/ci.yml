@@ -25,6 +25,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: rust-src
 
       # Cache ~/.cargo/registry and the workspace target dir for fast re-runs
       - name: Cache Cargo dependencies
@@ -58,6 +59,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: rust-src
 
       - name: Cache Cargo dependencies
         uses: actions/cache@v4
@@ -73,9 +75,6 @@ jobs:
 
       - name: Install Stellar CLI
         uses: stellar/stellar-cli@v27.0.0
-
-      - name: Install WASM target
-        run: rustup target add wasm32-unknown-unknown
 
       - name: Build WASM contract
         working-directory: contracts/escrow_vault
