@@ -1,0 +1,28 @@
+[package]
+name    = "escrow-vault"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]   # Required for Soroban WASM compilation
+
+[profile.release]
+opt-level        = "z"       # optimise for binary size
+overflow-checks  = true      # mandatory: prevents integer overflow exploits
+debug            = 0         # no debug info in release WASM
+debug-assertions = false
+strip            = "symbols"
+panic            = "abort"   # required: no unwinding in WASM runtime
+codegen-units    = 1
+lto              = true      # link-time optimisation — further shrinks the .wasm
+
+[dependencies]
+soroban-sdk = "22"
+
+[dev-dependencies]
+soroban-sdk = { version = "22", features = ["testutils"] }
+
+[features]
+# Uncomment to generate bindings for JS/TS consumers via stellar contract bindings
+# testutils = ["soroban-sdk/testutils"]
