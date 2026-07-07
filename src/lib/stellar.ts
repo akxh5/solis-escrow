@@ -29,6 +29,8 @@ import {
   nativeToScVal,
   xdr,
   BASE_FEE,
+  Transaction,
+  FeeBumpTransaction,
 } from "@stellar/stellar-sdk";
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
 
@@ -300,7 +302,7 @@ export async function pledgeToEscrow(
     .build();
 
   // ── 3. Simulate → assemble (resource fees + Soroban auth entry) ─────────────
-  let preparedTx: ReturnType<typeof SorobanRpc.assembleTransaction> extends Promise<infer T> ? T : never;
+  let preparedTx: Transaction | FeeBumpTransaction;
   try {
     const simulation = await rpc.simulateTransaction(unsignedTx);
 
