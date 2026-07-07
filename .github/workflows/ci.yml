@@ -24,7 +24,7 @@ jobs:
       - name: Install Rust stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32v1-none
           components: rust-src
 
       # Cache ~/.cargo/registry and the workspace target dir for fast re-runs
@@ -58,7 +58,7 @@ jobs:
       - name: Install Rust stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: wasm32-unknown-unknown
+          targets: wasm32v1-none
           components: rust-src
 
       - name: Cache Cargo dependencies
