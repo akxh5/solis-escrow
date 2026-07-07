@@ -71,11 +71,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-wasm-
 
-      - name: Install Linux dependencies
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libdbus-1-dev
-
-      - name: Install stellar-cli
-        run: cargo install --locked stellar-cli
+      - name: Install Stellar CLI
+        uses: stellar/stellar-cli@v27.0.0
 
       - name: Install WASM target
         run: rustup target add wasm32-unknown-unknown
