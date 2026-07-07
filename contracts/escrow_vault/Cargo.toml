@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [lib]
-crate-type = ["cdylib"]   # Required for Soroban WASM compilation
+crate-type = ["cdylib", "rlib"]   # Required for Soroban WASM compilation
 
 [profile.release]
 opt-level        = "z"       # optimise for binary size
