@@ -438,8 +438,8 @@ export default function BountyCard() {
         </div>
 
         {/* Input + quick-select */}
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div
               className="flex-1 flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200"
               style={{
@@ -469,17 +469,20 @@ export default function BountyCard() {
               />
               <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--sol-amber)", letterSpacing: "0.05em" }}>XLM</span>
             </div>
-            {[50, 200, 500].map((amt) => (
-              <button
-                key={amt}
-                onClick={() => handleQuickSelect(amt)}
-                disabled={!isConnected || isBusy}
-                className="btn-ghost py-2 px-3 text-xs"
-                style={{ opacity: !isConnected || isBusy ? 0.3 : 1 }}
-              >
-                {amt}
-              </button>
-            ))}
+            
+            <div className="flex items-center gap-2 flex-wrap">
+              {[50, 200, 500].map((amt) => (
+                <button
+                  key={amt}
+                  onClick={() => handleQuickSelect(amt)}
+                  disabled={!isConnected || isBusy}
+                  className="btn-ghost flex-1 py-3 px-4 text-xs font-semibold rounded-xl border border-white/5 hover:border-white/10"
+                  style={{ opacity: !isConnected || isBusy ? 0.3 : 1 }}
+                >
+                  {amt} XLM
+                </button>
+              ))}
+            </div>
           </div>
 
           {validationError && (
