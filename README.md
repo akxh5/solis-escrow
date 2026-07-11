@@ -1,191 +1,94 @@
 # Solis Escrow
 
-**A decentralized crowdfunding and bounty platform built on the Stellar Network using Soroban smart contracts.**
+A decentralized crowdfunding and bounty escrow platform built on the **Stellar Network** using **Soroban Smart Contracts**.
 
-Solis Escrow lets developers post bounties backed by XLM held in a trustless Soroban escrow vault. Backers pledge directly to the smart contract; funds are released only when milestones are verified. Built during the White Belt → Yellow Belt milestones of the Solis developer program.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 16 (App Router, Turbopack) · TypeScript · Tailwind CSS |
-| Wallet | `@creit.tech/stellar-wallets-kit` v2.x · Freighter Browser Extension |
-| Blockchain | Stellar Testnet · Soroban Smart Contracts (Rust, `soroban-sdk` v22) |
-| RPC | Horizon Testnet · Soroban RPC Testnet |
-| Design | Dark glassmorphism · Amber brand · CSS custom properties |
+Solis Escrow allows open-source projects, backers, and developers to create trustless bounties backed by XLM. Funds pledged by backers are safely held in a Soroban escrow vault smart contract. These funds are only claimable by the admin upon successful completion of the milestones, or fully refundable to the backers if the campaign fails to reach its goal before the deadline.
 
 ---
 
-## Features
+## 🔗 Important Links
 
-- 🔐 **Freighter wallet integration** — connect/disconnect with session persistence across page refreshes
-- 💰 **Live XLM balance** — fetched from Horizon, auto-polls every 30 seconds
-- 📜 **Soroban contract invocation** — pledge triggers an `InvokeHostFunction` operation, not a native transfer
-- 🛡️ **4-tier error pipeline** — contract errors caught at simulation (before Freighter opens), send, poll, and fallback stages
-- 🟢 **Contract ID validation** — UI validates the strkey format (`^C[A-Z2-7]{55}$`) and shows distinct badge states
-- ⚡ **4-step tx progress bar** — building → signing → submitting → confirming
+* **Live Demo URL:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)
+* **Demo Video Walkthrough:** [Google Drive Demo Video](https://drive.google.com/file/d/1LQuwgZo4NE4HXsH8mE1zwqwE3S5eLAAo/view?usp=sharing)
 
 ---
 
-## Local Setup
+## 🏛️ Project Architecture & Overview
+
+The project is structured into two core components:
+
+### 1. Soroban Smart Contract (Rust)
+Located in `contracts/escrow_vault/`, the contract governs the entire vault lifecycle:
+- **`initialize(admin, goal, deadline)`**: Configures the escrow vault parameters. Can only be called once.
+- **`pledge(pledger, amount)`**: Allows users to back the bounty with XLM. Validates that the deadline is not passed, amount is valid ($> 0$), and the goal is not yet met.
+- **`claim(admin)`**: Allows the designated admin to withdraw the entire prize pool once the goal is met and the deadline is passed.
+- **`refund(pledger)`**: Allows backers to safely reclaim their exact XLM pledge if the goal is not met after the deadline passes. Double-refund protections are fully implemented.
+
+### 2. Premium Next.js Frontend (TypeScript & Tailwind)
+A high-fidelity client built with Next.js 16 (App Router & Turbopack) featuring:
+- **Freighter Wallet Integration**: Connect and disconnect flows with automatic session persistence across refreshes.
+- **Real-Time Data**: Active polling from Horizon nodes to maintain up-to-date XLM balances.
+- **Non-blocking Transaction UX**: Multi-stage progress tracking (Building → Signing → Submitting → Confirming) with granular on-chain error decoding.
+- **High-Fidelity Aesthetics**: Dark-mode glassmorphic styling, rich amber accents, responsive flex-wrap structures, and polished micro-interactions.
+
+---
+
+## 📜 Contract Details (Stellar Testnet)
+
+- **Deployed Contract ID:** `CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53`
+- **Contract Deploy Transaction Hash:** `1ecbedc34470695a96bfa7e8e43028591302330f8c31e0ec090b115ed1b61252`
+- **Contract Initialize Transaction Hash:** `f3afdd415edabc1d1d05f557accca11da2b3326f969dc1d2081a1983af0ee607`
+
+🔗 [View Contract on Stellar Expert Explorer](https://stellar.expert/explorer/testnet/contract/CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53)
+
+---
+
+## 📸 Visual Evidence
+
+### Mobile Responsive UI
+![Mobile Responsive UI](mobile-ui.jpeg)
+
+### 13 Passing Unit Tests
+![13 Passing Unit Tests](passing-tests.png)
+
+### Green CI/CD Pipeline
+![Green CI/CD Pipeline](green-pipeline.png)
+
+---
+
+## 🛠️ Local Development & Setup
 
 ### Prerequisites
-
 - Node.js 18+
-- [Freighter Wallet](https://freighter.app) browser extension (set to **Testnet**)
-- Rust + `wasm32-unknown-unknown` target (for contract development only)
-- [Stellar CLI](https://github.com/stellar/stellar-cli) (`cargo install --locked stellar-cli --features opt`)
+- [Freighter Wallet](https://freighter.app) browser extension (configured to **Testnet**)
+- Rust toolchain (`wasm32v1-none` target + `rust-src` component)
+- [Stellar CLI](https://github.com/stellar/stellar-cli) (`v27.0.0`+)
 
-### 1. Clone & install
+### Setup Commands
 
-```bash
-git clone https://github.com/akxh5/solis-escrow.git
-cd solis-escrow
-npm install
-```
+1. **Clone and Install dependencies**
+   ```bash
+   git clone https://github.com/akxh5/solis-escrow.git
+   cd solis-escrow
+   npm install
+   ```
 
-### 2. Run the frontend
+2. **Run Unit Tests**
+   ```bash
+   cargo test -p escrow-vault --features soroban-sdk/testutils
+   ```
 
-```bash
-npm run dev
-# → http://localhost:3000
-```
+3. **Build the WASM Contract**
+   ```bash
+   stellar contract build
+   ```
 
-### 3. Connect wallet
-
-Open Freighter, switch network to **Testnet**, and click **Connect Wallet** on the app.  
-Fund your testnet account if needed:
-```bash
-curl "https://friendbot.stellar.org/?addr=YOUR_G_ADDRESS"
-```
-
-### 4. Pledge to a bounty
-
-Enter an XLM amount in the BountyCard → click **Pledge to Bounty** → approve in Freighter.  
-The transaction invokes the `pledge` function on the live Soroban escrow contract.
+4. **Run the Next.js Client**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ---
 
-## Smart Contract
-
-Located in `contracts/escrow_vault/src/lib.rs`.
-
-### Build
-
-```bash
-stellar contract build
-# Output: target/wasm32v1-none/release/escrow_vault.wasm
-```
-
-### Deploy (Testnet)
-
-```bash
-stellar contract deploy --wasm target/wasm32v1-none/release/escrow_vault.wasm --source deployer --network testnet
-```
-
-### Initialize
-
-```bash
-stellar contract invoke --id <CONTRACT_ID> --source deployer --network testnet -- initialize --admin <YOUR_G_ADDRESS> --goal 50000000000 --deadline <LEDGER_NUMBER>
-```
-
-> **Note:** `goal` is in stroops (1 XLM = 10,000,000 stroops). `deadline` is a Stellar ledger sequence number (~5s per ledger; 14 days ≈ 241,920 ledgers from current).
-
-### Contract Functions
-
-| Function | Description |
-|---|---|
-| `initialize(admin, goal, deadline)` | Set vault parameters |
-| `pledge(pledger, amount)` | Record a pledge (validates deadline, amount > 0, goal not met) |
-| `get_total()` | Returns running pledge total in stroops |
-| `get_goal()` | Returns the funding goal in stroops |
-| `get_deadline()` | Returns the deadline ledger sequence |
-| `get_pledge(address)` | Returns a pledger's record |
-
-### Custom Error Codes
-
-| Code | Variant | Trigger |
-|---|---|---|
-| `#1` | `DeadlinePassed` | Current ledger ≥ deadline |
-| `#2` | `InvalidPledgeAmount` | Amount ≤ 0 |
-| `#3` | `GoalAlreadyMet` | Running total ≥ goal |
-| `#4` | `NotInitialized` | `initialize` was never called |
-| `#5` | `Unauthorized` | Caller is not the admin |
-
----
-
-## Yellow Belt Deployment Artifacts
-
-### Live Contract
-
-| Field | Value |
-|---|---|
-| **Contract ID** | `CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53` |
-| **Network** | Stellar Testnet |
-| **Goal** | 5,000 XLM (50,000,000,000 stroops) |
-| **Deadline Ledger** | 3,718,186 |
-| **Admin** | Deployer keypair |
-
-### Successful Transactions
-
-| Transaction | Hash |
-|---|---|
-| Contract deploy | `1ecbedc34470695a96bfa7e8e43028591302330f8c31e0ec090b115ed1b61252` |
-| Contract initialize | `f3afdd415edabc1d1d05f557accca11da2b3326f969dc1d2081a1983af0ee607` |
-
-🔗 [View contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53)
-
----
-
-## Screenshots
-
-### Connected UI — Green Contract Badge
-
-![Connected UI with green Soroban contract badge](./ui.png)
-
-### Testnet Transaction — Stellar Expert
-
-![Successful Soroban pledge transaction on Stellar Expert testnet](./testnet.png)
-
----
-
-## Project Structure
-
-```
-solis-escrow/
-├── contracts/
-│   └── escrow_vault/
-│       ├── Cargo.toml          # Crate manifest
-│       └── src/lib.rs          # Soroban contract (Rust)
-├── src/
-│   ├── app/
-│   │   ├── layout.tsx          # Root layout + WalletProvider
-│   │   ├── page.tsx            # Landing page
-│   │   └── globals.css         # Design system (tokens, glassmorphism)
-│   ├── components/
-│   │   ├── BountyCard.tsx      # Pledge UI + Soroban tx flow
-│   │   └── WalletConnect.tsx   # Connect/disconnect button
-│   ├── context/
-│   │   └── WalletContext.tsx   # Wallet state + session persistence
-│   └── lib/
-│       └── stellar.ts          # Horizon + Soroban RPC utilities
-├── Cargo.toml                  # Workspace root (profile.release lives here)
-├── next.config.ts              # Turbopack aliases for Node.js stubs
-└── README.md
-```
-
----
-
-## Milestone Progress
-
-| Belt | Goal | Status |
-|---|---|---|
-| ⚪ White Belt | Freighter connect + XLM balance display | ✅ Complete |
-| 🟡 Yellow Belt | Soroban contract deployed + pledge invocation | ✅ Complete |
-| 🟠 Orange Belt | Multi-milestone escrow + release logic | 🔜 Next |
-
----
-
-*Built with ❤️ on Stellar Testnet.*
+*Built with ❤️ for the Level 3 (Orange Belt) submission.*
