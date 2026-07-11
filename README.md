@@ -13,27 +13,38 @@ Solis Escrow allows open-source projects, backers, and developers to create trus
 
 ---
 
-## 🏛️ Project Architecture & Overview
+## 🏛️ System Architecture
 
-The project is structured into two core components:
+Solis Escrow relies on a trustless Web3 architectural flow integrating the Stellar network ecosystem, Freighter wallet interface, and a custom Soroban Rust contract.
 
-### 1. Soroban Smart Contract (Rust)
-Located in `contracts/escrow_vault/`, the contract governs the entire vault lifecycle:
-- **`initialize(admin, goal, deadline)`**: Configures the escrow vault parameters. Can only be called once.
-- **`pledge(pledger, amount)`**: Allows users to back the bounty with XLM. Validates that the deadline is not passed, amount is valid ($> 0$), and the goal is not yet met.
-- **`claim(admin)`**: Allows the designated admin to withdraw the entire prize pool once the goal is met and the deadline is passed.
-- **`refund(pledger)`**: Allows backers to safely reclaim their exact XLM pledge if the goal is not met after the deadline passes. Double-refund protections are fully implemented.
+```mermaid
+graph TD
+    Client[Next.js Frontend] -->|1. Sign with| Freighter[Freighter Wallet]
+    Client -->|2. Check Balance| Horizon[Horizon Testnet API]
+    Client -->|3. Invoke Host Function| RPC[Soroban RPC Testnet]
+    RPC -->|4. Update State| Ledger[Stellar Ledger]
+    Ledger -->|5. Run Logic| Contract[EscrowVault Smart Contract]
+    
+    subgraph Soroban Smart Contract
+        Contract -->|initialize| Admin[Admin Configuration]
+        Contract -->|pledge| Pledge[Track Pledger & Total Balance]
+        Contract -->|claim| Claim[Disburse Pool to Admin]
+        Contract -->|refund| Refund[Return Pledges on Unmet Goal]
+    end
+```
 
-### 2. Premium Next.js Frontend (TypeScript & Tailwind)
-A high-fidelity client built with Next.js 16 (App Router & Turbopack) featuring:
-- **Freighter Wallet Integration**: Connect and disconnect flows with automatic session persistence across refreshes.
-- **Real-Time Data**: Active polling from Horizon nodes to maintain up-to-date XLM balances.
-- **Non-blocking Transaction UX**: Multi-stage progress tracking (Building → Signing → Submitting → Confirming) with granular on-chain error decoding.
-- **High-Fidelity Aesthetics**: Dark-mode glassmorphic styling, rich amber accents, responsive flex-wrap structures, and polished micro-interactions.
+### Flow Breakdown
+1. **Wallet Authentication & Sessions:** The Next.js frontend uses `@creit.tech/stellar-wallets-kit` to request public keys from the Freighter extension. Session states are persisted securely across page refreshes.
+2. **Horizon Balance Monitoring:** Pledger XLM balances are monitored in real-time by querying Horizon API nodes.
+3. **RPC Simulation & Assembly:** Before submitting a transaction, it is simulated on the Soroban RPC. Resource fees and authorization parameters are automatically adjusted.
+4. **Soroban Escrow State Machine:** The Rust-based contract handles the pool logic:
+   - **Under Goal / Before Deadline:** Pledgers can back the bounty. Claims and refunds are locked.
+   - **Goal Met / After Deadline:** The designated administrator is authorized to execute the `claim` method to withdraw the balance.
+   - **Goal Unmet / After Deadline:** Individual backers can trigger the `refund` method to reclaim their contributions, protected by zero-out and double-refund guards.
 
 ---
 
-## 📜 Contract Details (Stellar Testnet)
+## 📜 Smart Contract Verification (Stellar Testnet)
 
 - **Deployed Contract ID:** `CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53`
 - **Contract Deploy Transaction Hash:** `1ecbedc34470695a96bfa7e8e43028591302330f8c31e0ec090b115ed1b61252`
@@ -41,12 +52,22 @@ A high-fidelity client built with Next.js 16 (App Router & Turbopack) featuring:
 
 🔗 [View Contract on Stellar Expert Explorer](https://stellar.expert/explorer/testnet/contract/CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53)
 
+### Testnet Transaction
+![Testnet Transaction](testnet.png)
+
 ---
 
-## 📸 Visual Evidence
+## 💻 Frontend & Mobile UI
+
+### Desktop Interface
+![Desktop Interface](ui.png)
 
 ### Mobile Responsive UI
 ![Mobile Responsive UI](mobile-ui.jpeg)
+
+---
+
+## ⚙️ CI/CD & Testing (DevOps)
 
 ### 13 Passing Unit Tests
 ![13 Passing Unit Tests](passing-tests.png)
