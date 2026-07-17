@@ -28,6 +28,7 @@ import {
   CONTRACT_ERRORS,
   getContractIdStatus,
   type PledgeResult,
+  type AssetType,
 } from "@/lib/stellar";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -111,6 +112,12 @@ const CodeIcon = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="16 18 22 12 16 6"/>
     <polyline points="8 6 2 12 8 18"/>
+  </svg>
+);
+
+const ChevronIcon = () => (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9"/>
   </svg>
 );
 
@@ -257,6 +264,7 @@ export default function BountyCard() {
   const contractReady = CONTRACT_STATUS === "valid";
 
   const [amount,          setAmount]          = useState("");
+  const [selectedAsset,   setSelectedAsset]   = useState<AssetType>("XLM");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [txStep,          setTxStep]          = useState<TxStep>("idle");
   const [txResult,        setTxResult]        = useState<PledgeResult | null>(null);
@@ -281,23 +289,31 @@ export default function BountyCard() {
     setAmount(val);
     setTxResult(null);
     setTxError(null);
-    setValidationError(val && isConnected ? validatePledgeAmount(val, xlmBalance) : null);
-  }, [isConnected, xlmBalance]);
+    setValidationError(val && isConnected ? validatePledgeAmount(val, xlmBalance, selectedAsset) : null);
+  }, [isConnected, xlmBalance, selectedAsset]);
 
   const handleQuickSelect = useCallback((amt: number) => {
     const val = amt.toString();
     setAmount(val);
     setTxResult(null);
     setTxError(null);
-    setValidationError(validatePledgeAmount(val, xlmBalance));
+    setValidationError(validatePledgeAmount(val, xlmBalance, selectedAsset));
     inputRef.current?.focus();
-  }, [xlmBalance]);
+  }, [xlmBalance, selectedAsset]);
+
+  const handleAssetChange = useCallback((asset: AssetType) => {
+    setSelectedAsset(asset);
+    setTxResult(null);
+    setTxError(null);
+    // Re-validate current amount with new asset context
+    setValidationError(amount ? validatePledgeAmount(amount, xlmBalance, asset) : null);
+  }, [amount, xlmBalance]);
 
   // ── Submit ────────────────────────────────────────────────────────────────────
   const handlePledge = useCallback(async () => {
     if (!isWalletReady || !publicKey || !contractReady) return;
 
-    const err = validatePledgeAmount(amount, xlmBalance);
+    const err = validatePledgeAmount(amount, xlmBalance, selectedAsset);
     if (err) { setValidationError(err); inputRef.current?.focus(); return; }
 
     setTxResult(null);
@@ -310,7 +326,7 @@ export default function BountyCard() {
 
       setTxStep("signing");
 
-      const resultPromise = pledgeToEscrow(publicKey, amount);
+      const resultPromise = pledgeToEscrow(publicKey, amount, selectedAsset);
 
       // Optimistically advance the progress bar after expected Freighter delay
       const stepTimer    = setTimeout(() => setTxStep("submitting"), 4_000);
@@ -330,7 +346,7 @@ export default function BountyCard() {
     } finally {
       setTxStep("idle");
     }
-  }, [isWalletReady, publicKey, contractReady, amount, xlmBalance, refreshBalance]);
+  }, [isWalletReady, publicKey, contractReady, amount, xlmBalance, selectedAsset, refreshBalance]);
 
   const dismiss = useCallback(() => { setTxResult(null); setTxError(null); }, []);
 
@@ -421,9 +437,9 @@ export default function BountyCard() {
         {/* Label + max */}
         <div className="flex items-center justify-between">
           <label htmlFor="pledge-amount" style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--text-secondary)" }}>
-            Pledge Amount (XLM)
+            Pledge Amount ({selectedAsset})
           </label>
-          {isConnected && (
+          {isConnected && selectedAsset === "XLM" && (
             <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
               Max:{" "}
               <button
@@ -437,6 +453,54 @@ export default function BountyCard() {
           )}
         </div>
 
+        {/* ── Asset selector ──────────────────────────────────────────────── */}
+        <div className="flex items-center gap-2">
+          {(["XLM", "USDC"] as AssetType[]).map((asset) => (
+            <button
+              key={asset}
+              onClick={() => handleAssetChange(asset)}
+              disabled={isBusy}
+              aria-pressed={selectedAsset === asset}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
+              style={{
+                background: selectedAsset === asset
+                  ? asset === "USDC"
+                    ? "rgba(59,130,246,0.15)"
+                    : "rgba(245,158,11,0.15)"
+                  : "rgba(255,255,255,0.04)",
+                border: selectedAsset === asset
+                  ? asset === "USDC"
+                    ? "1px solid rgba(59,130,246,0.4)"
+                    : "1px solid rgba(245,158,11,0.4)"
+                  : "1px solid rgba(255,255,255,0.07)",
+                color: selectedAsset === asset
+                  ? asset === "USDC" ? "#93c5fd" : "var(--sol-amber-glow)"
+                  : "var(--text-muted)",
+                opacity: isBusy ? 0.5 : 1,
+                cursor: isBusy ? "not-allowed" : "pointer",
+              }}
+            >
+              {asset === "XLM" ? "✦" : "$"}
+              <span>{asset === "XLM" ? "Native (XLM)" : "Stablecoin (USDC)"}</span>
+              {selectedAsset === asset && <ChevronIcon />}
+            </button>
+          ))}
+        </div>
+
+        {/* USDC trustline info note */}
+        {selectedAsset === "USDC" && (
+          <div
+            className="flex items-start gap-2 px-3 py-2 rounded-lg animate-fade-in"
+            style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)", fontSize: "0.7rem", color: "#93c5fd", lineHeight: 1.5 }}
+          >
+            <span style={{ flexShrink: 0, marginTop: "1px" }}>ℹ️</span>
+            <span>
+              USDC requires an active trustline in your Freighter wallet.
+              Ensure your testnet account holds USDC before pledging.
+            </span>
+          </div>
+        )}
+
         {/* Input + quick-select */}
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row gap-2">
@@ -448,7 +512,9 @@ export default function BountyCard() {
                 boxShadow: validationError
                   ? "0 0 0 3px rgba(239,68,68,0.08)"
                   : amount && !validationError && isConnected
-                  ? "0 0 0 3px rgba(245,158,11,0.08)"
+                  ? selectedAsset === "USDC"
+                    ? "0 0 0 3px rgba(59,130,246,0.08)"
+                    : "0 0 0 3px rgba(245,158,11,0.08)"
                   : "none",
               }}
             >
@@ -456,7 +522,7 @@ export default function BountyCard() {
                 id="pledge-amount"
                 ref={inputRef}
                 type="number"
-                placeholder="e.g. 50"
+                placeholder={`e.g. ${selectedAsset === "USDC" ? "10" : "50"}`}
                 min="1"
                 step="any"
                 value={amount}
@@ -464,14 +530,19 @@ export default function BountyCard() {
                 onKeyDown={(e) => e.key === "Enter" && !pledgeDisabled && handlePledge()}
                 disabled={!isConnected || isBusy}
                 className="flex-1 bg-transparent outline-none text-sm font-medium"
-                style={{ color: "var(--text-primary)", caretColor: "var(--sol-amber)", opacity: !isConnected || isBusy ? 0.4 : 1 }}
+                style={{ color: "var(--text-primary)", caretColor: selectedAsset === "USDC" ? "#93c5fd" : "var(--sol-amber)", opacity: !isConnected || isBusy ? 0.4 : 1 }}
                 aria-invalid={!!validationError}
               />
-              <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--sol-amber)", letterSpacing: "0.05em" }}>XLM</span>
+              <span style={{
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: selectedAsset === "USDC" ? "#93c5fd" : "var(--sol-amber)",
+                letterSpacing: "0.05em",
+              }}>{selectedAsset}</span>
             </div>
             
             <div className="flex items-center gap-2 flex-wrap">
-              {[50, 200, 500].map((amt) => (
+              {(selectedAsset === "USDC" ? [5, 10, 25] : [50, 200, 500]).map((amt) => (
                 <button
                   key={amt}
                   onClick={() => handleQuickSelect(amt)}
@@ -479,7 +550,7 @@ export default function BountyCard() {
                   className="btn-ghost flex-1 py-3 px-4 text-xs font-semibold rounded-xl border border-white/5 hover:border-white/10"
                   style={{ opacity: !isConnected || isBusy ? 0.3 : 1 }}
                 >
-                  {amt} XLM
+                  {amt} {selectedAsset}
                 </button>
               ))}
             </div>
@@ -529,7 +600,7 @@ export default function BountyCard() {
                   <CheckIcon />
                 </div>
                 <span style={{ fontWeight: 600, fontSize: "0.875rem", color: "#4ade80" }}>
-                  Pledge confirmed on-chain!
+                  {txResult.assetSymbol} pledge confirmed on-chain!
                 </span>
               </div>
               <button onClick={dismiss} style={{ color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }} aria-label="Dismiss">

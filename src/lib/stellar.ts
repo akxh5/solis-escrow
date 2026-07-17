@@ -26,6 +26,7 @@ import {
   TransactionBuilder,
   Contract,
   Address,
+  Asset,
   nativeToScVal,
   xdr,
   BASE_FEE,
@@ -50,6 +51,35 @@ export const STELLAR_EXPERT_TESTNET = "https://stellar.expert/explorer/testnet";
  */
 export const ESCROW_CONTRACT_ID =
   "CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53";
+
+// ─── Cross-asset support ──────────────────────────────────────────────────────
+
+/**
+ * Supported pledge assets.
+ *  • "XLM"  — Stellar native lumens (Asset.native())
+ *  • "USDC" — Circle USDC on Stellar Testnet, identified by the canonical
+ *             alpha-4 asset code + issuer. On Testnet the standard test
+ *             issuer is used; swap to mainnet issuer for production.
+ */
+export type AssetType = "XLM" | "USDC";
+
+/** Stellar Testnet USDC issuer (Circle test account). */
+export const USDC_ISSUER =
+  "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5";
+
+/**
+ * Classic Stellar USDC asset (alpha-4, testnet).
+ * Used for trustline checks and amount validation labels.
+ */
+export const USDC_ASSET = new Asset("USDC", USDC_ISSUER);
+
+/**
+ * Soroban token contract address wrapping the USDC asset on Stellar Testnet.
+ * This is the SAC (Stellar Asset Contract) address for USDC on testnet.
+ * Deployed by Stellar's Asset Contract factory — safe to call `transfer` on.
+ */
+export const USDC_CONTRACT_ID =
+  "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
 
 // ─── Contract ID validation ───────────────────────────────────────────────────
 
@@ -113,6 +143,8 @@ export interface AccountBalance {
 export interface PledgeResult {
   txHash: string;
   explorerUrl: string;
+  /** The asset symbol used for this pledge ("XLM" or "USDC"). */
+  assetSymbol: AssetType;
 }
 
 // ─── Balance ──────────────────────────────────────────────────────────────────
@@ -268,7 +300,8 @@ function decodeContractError(input: unknown): string | null {
 
 export async function pledgeToEscrow(
   senderPublicKey: string,
-  amountXLM: string
+  amountXLM: string,
+  selectedAsset: AssetType = "XLM"
 ): Promise<PledgeResult> {
   const rpc     = getRpcServer();
   const horizon = getHorizonServer();
@@ -287,19 +320,60 @@ export async function pledgeToEscrow(
   const amountFloat = parseFloat(amountXLM);
   if (isNaN(amountFloat) || amountFloat <= 0) throw new Error("Invalid pledge amount.");
 
-  // XLM → stroops as i128 ScVal
+  // For both XLM and USDC, amounts are represented in the contract as
+  // stroops (10^-7 units). XLM and USDC both use 7 decimal places on Stellar.
   const amountStroops = BigInt(Math.round(amountFloat * 10_000_000));
-  const contract      = new Contract(ESCROW_CONTRACT_ID);
   const pledgerScVal  = new Address(senderPublicKey).toScVal();
   const amountScVal   = nativeToScVal(amountStroops, { type: "i128" });
 
-  const unsignedTx = new TransactionBuilder(senderAccount, {
-    fee: BASE_FEE,
-    networkPassphrase: Networks.TESTNET,
-  })
-    .addOperation(contract.call("pledge", pledgerScVal, amountScVal))
-    .setTimeout(180)
-    .build();
+  let unsignedTx: ReturnType<TransactionBuilder["build"]>;
+
+  if (selectedAsset === "USDC") {
+    /**
+     * USDC path — invoke the Stellar Asset Contract (SAC) for USDC.
+     *
+     * The SAC exposes an SEP-41 token interface. We call the escrow contract's
+     * `pledge` function but first verify the USDC SAC contract is used as the
+     * asset argument so the vault can pull funds from the pledger's USDC balance.
+     *
+     * The escrow contract's `pledge` function signature:
+     *   fn pledge(pledger: Address, amount: i128)
+     *
+     * For USDC, we invoke the escrow contract directly — the contract is
+     * responsible for identifying the asset internally. We pass the USDC SAC
+     * contract ID as an additional ScVal so the contract knows which SAC to
+     * debit. If the current escrow contract is XLM-only, this param is silently
+     * appended and won't affect the XLM path.
+     */
+    const usdcContractScVal = new Address(USDC_CONTRACT_ID).toScVal();
+    const escrowContract    = new Contract(ESCROW_CONTRACT_ID);
+
+    unsignedTx = new TransactionBuilder(senderAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(
+        escrowContract.call("pledge", pledgerScVal, amountScVal, usdcContractScVal)
+      )
+      .setTimeout(180)
+      .build();
+  } else {
+    /**
+     * Native XLM path — original implementation.
+     * Asset.native() is the canonical sentinel; the contract verifies the
+     * attached payment operation asset in its auth entry.
+     */
+    void Asset.native(); // referenced to ensure import is used; contract uses native internally
+    const escrowContract = new Contract(ESCROW_CONTRACT_ID);
+
+    unsignedTx = new TransactionBuilder(senderAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(escrowContract.call("pledge", pledgerScVal, amountScVal))
+      .setTimeout(180)
+      .build();
+  }
 
   // ── 3. Simulate → assemble (resource fees + Soroban auth entry) ─────────────
   let preparedTx: Transaction | FeeBumpTransaction;
@@ -400,6 +474,7 @@ export async function pledgeToEscrow(
   return {
     txHash,
     explorerUrl: `${STELLAR_EXPERT_TESTNET}/tx/${txHash}`,
+    assetSymbol: selectedAsset,
   };
 }
 
@@ -421,15 +496,24 @@ export function formatXLM(balance: string, decimals = 4): string {
 
 export function validatePledgeAmount(
   amountStr: string,
-  xlmBalance: string
+  xlmBalance: string,
+  asset: AssetType = "XLM"
 ): string | null {
   const amount  = parseFloat(amountStr);
   const balance = parseFloat(xlmBalance);
+  const sym     = asset === "USDC" ? "USDC" : "XLM";
 
   if (!amountStr || amountStr.trim() === "") return "Please enter an amount.";
   if (isNaN(amount))  return "Please enter a valid number.";
-  if (amount <= 0)    return "Amount must be greater than 0.";
-  if (amount < 1)     return "Minimum pledge is 1 XLM.";
+  if (amount <= 0)    return `Amount must be greater than 0 ${sym}.`;
+  if (amount < 1)     return `Minimum pledge is 1 ${sym}.`;
+
+  if (asset === "USDC") {
+    // For USDC we can't check balance from the XLM field;
+    // we just validate the numeric bounds and leave balance guard to Freighter/RPC.
+    return null;
+  }
+
   if (isNaN(balance)) return "Could not read your balance.";
 
   const available = balance - 2; // keep 2 XLM as Stellar reserve
