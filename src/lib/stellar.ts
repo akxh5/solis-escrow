@@ -50,7 +50,7 @@ export const STELLAR_EXPERT_TESTNET = "https://stellar.expert/explorer/testnet";
  * as soon as a valid 56-character Soroban contract strkey is present.
  */
 export const ESCROW_CONTRACT_ID =
-  "CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53";
+  "CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ";
 
 // ─── Cross-asset support ──────────────────────────────────────────────────────
 
@@ -81,6 +81,14 @@ export const USDC_ASSET = new Asset("USDC", USDC_ISSUER);
 export const USDC_CONTRACT_ID =
   "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
 
+/**
+ * Stellar Asset Contract (SAC) address for native XLM on Stellar Testnet.
+ * Resolved via: `stellar contract id asset --asset native --network testnet`
+ * This is the canonical contract address the escrow vault is initialised with.
+ */
+export const XLM_SAC_CONTRACT_ID =
+  "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
+
 // ─── Contract ID validation ───────────────────────────────────────────────────
 
 /**
@@ -91,8 +99,8 @@ export const USDC_CONTRACT_ID =
  */
 const CONTRACT_ID_REGEX = /^C[A-Z2-7]{55}$/;
 
-/** The exact unedited placeholder we ship in the repo. */
-const PLACEHOLDER_ID = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2OQ";
+/** The old Orange Belt contract — used as placeholder sentinel so new ID is green. */
+const PLACEHOLDER_ID = "CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53";
 
 export type ContractIdStatus = "placeholder" | "invalid" | "valid";
 
@@ -330,47 +338,38 @@ export async function pledgeToEscrow(
 
   if (selectedAsset === "USDC") {
     /**
-     * USDC path — invoke the Stellar Asset Contract (SAC) for USDC.
-     *
-     * The SAC exposes an SEP-41 token interface. We call the escrow contract's
-     * `pledge` function but first verify the USDC SAC contract is used as the
-     * asset argument so the vault can pull funds from the pledger's USDC balance.
-     *
-     * The escrow contract's `pledge` function signature:
-     *   fn pledge(pledger: Address, amount: i128)
-     *
-     * For USDC, we invoke the escrow contract directly — the contract is
-     * responsible for identifying the asset internally. We pass the USDC SAC
-     * contract ID as an additional ScVal so the contract knows which SAC to
-     * debit. If the current escrow contract is XLM-only, this param is silently
-     * appended and won't affect the XLM path.
+     * USDC path — pass the USDC Stellar Asset Contract (SAC) address as the
+     * 3rd argument to the escrow contract's `pledge(pledger, amount, asset)` fn.
+     * The contract uses this address to call SAC.transfer() on-chain.
      */
-    const usdcContractScVal = new Address(USDC_CONTRACT_ID).toScVal();
-    const escrowContract    = new Contract(ESCROW_CONTRACT_ID);
-
-    unsignedTx = new TransactionBuilder(senderAccount, {
-      fee: BASE_FEE,
-      networkPassphrase: Networks.TESTNET,
-    })
-      .addOperation(
-        escrowContract.call("pledge", pledgerScVal, amountScVal, usdcContractScVal)
-      )
-      .setTimeout(180)
-      .build();
-  } else {
-    /**
-     * Native XLM path — original implementation.
-     * Asset.native() is the canonical sentinel; the contract verifies the
-     * attached payment operation asset in its auth entry.
-     */
-    void Asset.native(); // referenced to ensure import is used; contract uses native internally
+    const assetScVal    = new Address(USDC_CONTRACT_ID).toScVal();
     const escrowContract = new Contract(ESCROW_CONTRACT_ID);
 
     unsignedTx = new TransactionBuilder(senderAccount, {
       fee: BASE_FEE,
       networkPassphrase: Networks.TESTNET,
     })
-      .addOperation(escrowContract.call("pledge", pledgerScVal, amountScVal))
+      .addOperation(
+        escrowContract.call("pledge", pledgerScVal, amountScVal, assetScVal)
+      )
+      .setTimeout(180)
+      .build();
+  } else {
+    /**
+     * Native XLM path — pass the XLM SAC address as the 3rd argument.
+     * The contract validates this matches the asset stored at initialize-time,
+     * then calls XLM_SAC.transfer(pledger, contract, amount) internally.
+     */
+    const assetScVal    = new Address(XLM_SAC_CONTRACT_ID).toScVal();
+    const escrowContract = new Contract(ESCROW_CONTRACT_ID);
+
+    unsignedTx = new TransactionBuilder(senderAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: Networks.TESTNET,
+    })
+      .addOperation(
+        escrowContract.call("pledge", pledgerScVal, amountScVal, assetScVal)
+      )
       .setTimeout(180)
       .build();
   }
