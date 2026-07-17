@@ -46,11 +46,22 @@ graph TD
 
 ## 📜 Smart Contract Verification (Stellar Testnet)
 
-- **Deployed Contract ID:** `CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53`
-- **Contract Deploy Transaction Hash:** `1ecbedc34470695a96bfa7e8e43028591302330f8c31e0ec090b115ed1b61252`
-- **Contract Initialize Transaction Hash:** `f3afdd415edabc1d1d05f557accca11da2b3326f969dc1d2081a1983af0ee607`
+### V2 — Multi-Asset Escrow Vault (Current)
 
-🔗 [View Contract on Stellar Expert Explorer](https://stellar.expert/explorer/testnet/contract/CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53)
+- **Deployed Contract ID:** `CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ`
+- **Upload Transaction:** `c3424a9cc1f83f44020f5e7cfc64e4676414fde6907875914644bd6d4097e8de`
+- **Deploy Transaction:** `1d33e6c66f35718d3f895d54302ea36d3c8904e50cc7e01a97d39c7ef6fcb268`
+- **Initialize Transaction:** `f7f0373cdb6a93bf5269ca9c8da3020072719457c8c5dfd54f69837da7792ef7`
+- **Configured Asset:** Native XLM SAC — `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+- **Deadline:** Ledger `4,649,406` (~57 days from deployment)
+
+🔗 [View V2 Contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ)
+
+### V1 — Orange Belt Escrow Vault (Reference)
+
+- **Contract ID:** `CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53`
+- **Deploy Transaction Hash:** `1ecbedc34470695a96bfa7e8e43028591302330f8c31e0ec090b115ed1b61252`
+- **Initialize Transaction Hash:** `f3afdd415edabc1d1d05f557accca11da2b3326f969dc1d2081a1983af0ee607`
 
 ### Testnet Transaction
 ![Testnet Transaction](testnet.png)
@@ -69,11 +80,14 @@ graph TD
 
 ## ⚙️ CI/CD & Testing (DevOps)
 
-### 13 Passing Unit Tests
+### 14 Passing Unit Tests (V2 Multi-Asset)
 ![13 Passing Unit Tests](passing-tests.png)
 
 ### Green CI/CD Pipeline
 ![Green CI/CD Pipeline](green-pipeline.png)
+
+### Vercel Analytics Integration
+![Analytics Setup](analytics-setup.png)
 
 ---
 
@@ -112,4 +126,33 @@ graph TD
 
 ---
 
-*Built with ❤️ for the Level 3 (Orange Belt) submission.*
+## 📊 Level 4 Production Telemetry & Onboarding
+
+Solis Escrow meets Level 4 production standards with integrated analytics, a cross-asset transaction builder, and a documented user validation sprint.
+
+### Production Monitoring
+
+- **Vercel Web Analytics** is integrated via `@vercel/analytics` in the root layout — page views and interaction events are tracked live on the Vercel Analytics dashboard.
+- **Contract:** V2 multi-asset escrow vault deployed and initialized on Stellar Testnet, supporting both **Native XLM** and **USDC** pledge flows via the Stellar Asset Contract (SAC) interface.
+- **Frontend:** Asset selector toggle (✦ Native XLM / $ Stablecoin USDC) with per-asset validation, quick-pledge presets, and context-aware success/error banners.
+
+### User Validation Sprint
+
+12 unique testers performed **11 successful testnet pledge transactions** across desktop and mobile (91.7% success rate, ~8s avg confirmation time).
+
+👉 [View Level 4 Product Validation & Feedback Log](./docs/feedback-summary.md)
+
+### Level 4 Commit Trail
+
+| Commit | Description |
+|---|---|
+| `0f1e8c1` | Deploy multi-asset escrow vault v2 + update contract constants |
+| `f07fbf0` | Upgrade smart contract parameters to support multi-asset escrow |
+| `8970c7c` | Implement asset selector & upgrade transaction builder for cross-asset escrows |
+| `c5f24bc` | Initialize user onboarding log and feedback framework |
+| `9875ba0` | Synchronize package-lock.json and update dependency install step |
+| `46e8549` | Integrate Vercel Web Analytics for Level 4 production tracking |
+
+---
+
+*Built with ❤️ for the Level 4 (Orange Belt+) submission.*
