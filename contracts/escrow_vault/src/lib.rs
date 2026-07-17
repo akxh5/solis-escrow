@@ -3,14 +3,15 @@
 //! # Solis Escrow Vault — Soroban Smart Contract
 //!
 //! A crowdfund escrow vault on the Stellar Testnet.
-//! Pledgers send XLM tracked by this contract. After the deadline:
+//! Pledgers send XLM or USDC tracked by this contract. After the deadline:
 //!   - If goal was MET   → admin can `claim` the full pot.
 //!   - If goal was UNMET → each pledger can `refund` their own contribution.
 //!
-//! Orange Belt additions over Yellow Belt:
-//!   - `claim(admin)`  — admin withdraws the full balance after a successful round.
-//!   - `refund(pledger)` — pledger reclaims their contribution after a failed round.
-//!   - Two new Error variants: `ClaimNotAllowed` (#6), `NothingToRefund` (#7).
+//! Level 4 additions over Orange Belt:
+//!   - `initialize` now accepts an `asset: Address` (SAC contract address).
+//!   - `pledge` now accepts `asset: Address` and validates it matches the
+//!     configured asset before pulling funds via the token SAC interface.
+//!   - Supports Native XLM SAC and USDC SAC interchangeably.
 
 use soroban_sdk::{
     contract, contractimpl, contracttype, contracterror,
@@ -27,6 +28,7 @@ const KEY_GOAL:     Symbol = symbol_short!("GOAL");
 const KEY_DEADLINE: Symbol = symbol_short!("DEADLINE");
 const KEY_TOTAL:    Symbol = symbol_short!("TOTAL");
 const KEY_CLAIMED:  Symbol = symbol_short!("CLAIMED");
+const KEY_ASSET:    Symbol = symbol_short!("ASSET");
 
 // ─── Data types ───────────────────────────────────────────────────────────────
 
@@ -69,6 +71,9 @@ pub enum Error {
 
     /// Contract has already been initialized.
     AlreadyInitialized  = 8,
+
+    /// The asset address provided does not match the configured asset.
+    AssetMismatch       = 9,
 }
 
 // ─── Contract ─────────────────────────────────────────────────────────────────
@@ -81,7 +86,16 @@ impl EscrowVault {
     // ── initialize ──────────────────────────────────────────────────────────────
 
     /// Set up the vault. Can only be called once.
-    pub fn initialize(env: Env, admin: Address, goal: i128, deadline: u32) -> Result<(), Error> {
+    ///
+    /// `asset` is the Stellar Asset Contract (SAC) address for the token this
+    /// vault will accept — either the Native XLM SAC or the USDC SAC.
+    pub fn initialize(
+        env:      Env,
+        admin:    Address,
+        goal:     i128,
+        deadline: u32,
+        asset:    Address,
+    ) -> Result<(), Error> {
         admin.require_auth();
 
         // Prevent double-initialization
@@ -94,19 +108,35 @@ impl EscrowVault {
         env.storage().instance().set(&KEY_DEADLINE, &deadline);
         env.storage().instance().set(&KEY_TOTAL,    &0_i128);
         env.storage().instance().set(&KEY_CLAIMED,  &false);
+        env.storage().instance().set(&KEY_ASSET,    &asset);
 
-        log!(&env, "EscrowVault initialized: goal={}, deadline={}", goal, deadline);
+        log!(&env, "EscrowVault initialized: goal={}, deadline={}, asset={}", goal, deadline, asset);
         Ok(())
     }
 
     // ── pledge ──────────────────────────────────────────────────────────────────
 
-    /// Record a pledge. The actual token transfer must be paired in the same tx.
-    pub fn pledge(env: Env, pledger: Address, amount: i128) -> Result<(), Error> {
+    /// Record a pledge and pull funds from the pledger via the token SAC.
+    ///
+    /// `asset` must match the SAC address stored during `initialize`.
+    /// The contract calls `token::Client::transfer_from` on that SAC to
+    /// move `amount` stroops from `pledger` to the contract itself.
+    pub fn pledge(
+        env:     Env,
+        pledger: Address,
+        amount:  i128,
+        asset:   Address,
+    ) -> Result<(), Error> {
         pledger.require_auth();
 
         if !env.storage().instance().has(&KEY_GOAL) {
             return Err(Error::NotInitialized);
+        }
+
+        // Validate the supplied asset matches the one configured at init-time
+        let configured_asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        if asset != configured_asset {
+            return Err(Error::AssetMismatch);
         }
 
         let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
@@ -124,6 +154,12 @@ impl EscrowVault {
             return Err(Error::GoalAlreadyMet);
         }
 
+        // Pull funds from the pledger via the Stellar Asset Contract (SAC).
+        // The pledger must have authorised this contract to spend on their behalf
+        // (handled by the auth entry assembled by assembleTransaction on the frontend).
+        let token_client = token::Client::new(&env, &configured_asset);
+        token_client.transfer(&pledger, &env.current_contract_address(), &amount);
+
         let new_total = total + amount;
         env.storage().instance().set(&KEY_TOTAL, &new_total);
 
@@ -139,7 +175,7 @@ impl EscrowVault {
             amount,
         );
 
-        log!(&env, "pledge_received: pledger={}, amount={}, total={}", pledger, amount, new_total);
+        log!(&env, "pledge_received: pledger={}, amount={}, total={}, asset={}", pledger, amount, new_total, asset);
         Ok(())
     }
 
@@ -149,9 +185,8 @@ impl EscrowVault {
     ///
     /// Requirements: deadline has passed AND total >= goal AND not yet claimed.
     ///
-    /// In the Soroban simulation environment (unit tests) the contract does not
-    /// actually hold tokens; `claim` records success and emits an event.
-    /// On-chain, pair this with a SAC `transfer_from` in the same transaction.
+    /// Transfers the full accumulated balance from the contract to the admin
+    /// using the stored asset SAC.
     pub fn claim(env: Env, admin: Address) -> Result<i128, Error> {
         admin.require_auth();
 
@@ -187,6 +222,11 @@ impl EscrowVault {
 
         env.storage().instance().set(&KEY_CLAIMED, &true);
 
+        // Transfer the full balance to the admin via the asset SAC
+        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let token_client = token::Client::new(&env, &asset);
+        token_client.transfer(&env.current_contract_address(), &admin, &total);
+
         env.events().publish(
             (symbol_short!("claim"), admin.clone()),
             total,
@@ -202,7 +242,7 @@ impl EscrowVault {
     ///
     /// Requirements: deadline has passed AND total < goal AND pledger has a record.
     ///
-    /// Like `claim`, the actual token movement must be paired in the calling tx.
+    /// Transfers the pledger's contribution back via the asset SAC.
     pub fn refund(env: Env, pledger: Address) -> Result<i128, Error> {
         pledger.require_auth();
 
@@ -246,6 +286,11 @@ impl EscrowVault {
         let new_total = total - refund_amount;
         env.storage().instance().set(&KEY_TOTAL, &new_total);
 
+        // Return funds to the pledger via the asset SAC
+        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let token_client = token::Client::new(&env, &asset);
+        token_client.transfer(&env.current_contract_address(), &pledger, &refund_amount);
+
         env.events().publish(
             (symbol_short!("refund"), pledger.clone()),
             refund_amount,
@@ -269,6 +314,10 @@ impl EscrowVault {
         env.storage().instance().get(&KEY_DEADLINE).ok_or(Error::NotInitialized)
     }
 
+    pub fn get_asset(env: Env) -> Result<Address, Error> {
+        env.storage().instance().get(&KEY_ASSET).ok_or(Error::NotInitialized)
+    }
+
     pub fn get_pledge(env: Env, pledger: Address) -> Option<PledgeRecord> {
         env.storage().instance().get(&pledger)
     }
@@ -282,4 +331,3 @@ impl EscrowVault {
 
 #[cfg(test)]
 mod test;
-
