@@ -71,7 +71,7 @@ graph TD
 ## 💻 Frontend & Mobile UI
 
 ### Desktop Interface
-![Desktop Interface](ui.png)
+![Desktop Interface](desktop-ui.png)
 
 ### Mobile Responsive UI
 ![Mobile Responsive UI](mobile-ui.jpeg)
