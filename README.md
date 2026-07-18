@@ -140,7 +140,8 @@ Solis Escrow meets Level 4 production standards with integrated analytics, a cro
 
 12 unique testers performed **11 successful testnet pledge transactions** across desktop and mobile (91.7% success rate, ~8s avg confirmation time).
 
-👉 [View Level 4 Product Validation & Feedback Log](./docs/feedback-summary.md)
+👉 [View Level 4 Wallet Interactions & Proof Log](./docs/wallet-interactions-proof.md)  
+👉 [View Level 4 UX Feedback & Analysis](./docs/feedback-summary-basic.md)
 
 ### Level 4 Commit Trail
 
