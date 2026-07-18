@@ -3,9 +3,9 @@
 > **Review Status:** 🟠 Orange Belt → Level 4 Submission  
 > **Document Owner:** Akshansh (akxh5)  
 > **Network:** Stellar Testnet  
-> **Contract:** `CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53`  
+> **Contract:** `CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ`  
 > **Live Demo:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)  
-> **Last Updated:** 2026-07-17
+> **Last Updated:** 2026-07-18
 
 ---
 
@@ -21,20 +21,18 @@ The validation sprint consisted of **10+ testnet pledge transactions** performed
 
 The following table documents user-initiated `pledge` transactions on Stellar Testnet. Each row represents a unique user session verified via Stellar Expert.
 
-| # | User Initials | Wallet Public Key (Truncated) | Transaction Hash (Truncated) | Status |
-|---|---|---|---|---|
-| 01 | A.K. | `GAA5…JJ6OG56` | `1ecbed…1b61252` | ✅ Success |
-| 02 | R.S. | `GBKJ…HT2R9M4` | `3a9f12…c2d7843` | ✅ Success |
-| 03 | M.P. | `GCXQ…ZL8W3N7` | `7d4e81…a0f5619` | ✅ Success |
-| 04 | T.L. | `GDY2…PK9R5B1` | `c2a038…39b4e72` | ✅ Success |
-| 05 | S.N. | `GBWN…QM4T7X8` | `9e5f64…d1c3290` | ✅ Success |
-| 06 | V.K. | `GCQR…YH6A2L3` | `4b2d07…87f6481` | ✅ Success |
-| 07 | A.M. | `GDTZ…WJ3K8P5` | `e8c192…5a0b736` | ✅ Success |
-| 08 | P.R. | `GCNX…SF1V9Y2` | `61a4d3…c9e0814` | ✅ Success |
-| 09 | D.B. | `GBVL…XK7M4Q6` | `0f7b58…4d2a195` | ✅ Success |
-| 10 | H.J. | `GCEH…RN2W5T9` | `a3c271…b6d8043` | ✅ Success |
-| 11 | L.Y. | `GBQM…ZP8F3A7` | `8d1e04…72c5930` | ❌ Failed (Freighter rejected) |
-| 12 | K.O. | `GDAJ…VH5L1N4` | `f3afdd…af0ee607` | ✅ Success |
+| Tester | Public Wallet Address | Transaction Hash | Asset | Status | Friction / UX Note |
+|---|---|---|---|---|---|
+| Tester 1 | `GDPG6R...ASJCWS` | `75f1938552d063a6660e9d09069cc58463fb0b1ec749ba0dbcd50845b85075ad` | XLM | Success | Transaction processed quickly on testnet, UI layout feels clean. |
+| Tester 2 | | | | | |
+| Tester 3 | | | | | |
+| Tester 4 | | | | | |
+| Tester 5 | | | | | |
+| Tester 6 | | | | | |
+| Tester 7 | | | | | |
+| Tester 8 | | | | | |
+| Tester 9 | | | | | |
+| Tester 10 | | | | | |
 
 > 🔗 All successful transactions are verifiable at [Stellar Expert Testnet Explorer](https://stellar.expert/explorer/testnet).
 
