@@ -1,35 +1,34 @@
 import type { Metadata } from "next";
 import WalletConnect from "@/components/WalletConnect";
-import BountyCard from "@/components/BountyCard";
+import EscrowExplorer from "@/components/EscrowExplorer";
 
 export const metadata: Metadata = {
-  title: "Solis Escrow — Decentralized Bounties on Stellar",
+  title: "Solis Escrow — Decentralized Escrow Marketplace on Stellar",
   description:
-    "Pledge XLM to open-source bounties secured by Soroban smart contracts. Connect your Freighter wallet to get started.",
+    "Browse, pledge to, and create trustless multi-party escrows secured by Soroban smart contracts on the Stellar Testnet. The Escrow Explorer for decentralized bounties.",
+  keywords: ["Stellar", "Soroban", "escrow", "bounty", "DeFi", "XLM", "marketplace"],
+  openGraph: {
+    title: "Solis Escrow Marketplace",
+    description: "Trustless multi-escrow marketplace on Stellar.",
+    type: "website",
+  },
 };
 
-// ─── Decorative icons ──────────────────────────────────────────────────────────
+// ─── Decorative ───────────────────────────────────────────────────────────────
 
 const SolisLogo = () => (
-  <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-    <circle cx="16" cy="16" r="15" stroke="url(#logoGrad)" strokeWidth="1.5" />
-    <circle cx="16" cy="16" r="6" fill="url(#logoGrad)" />
+  <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
+    <rect width="32" height="32" fill="#FFE600" />
+    <rect x="4" y="4" width="24" height="24" fill="#FFE600" stroke="#0A0A0A" strokeWidth="2" />
+    <circle cx="16" cy="16" r="5" fill="#0A0A0A" />
     {[0, 60, 120, 180, 240, 300].map((deg) => {
       const rad = (deg * Math.PI) / 180;
-      const x1 = 16 + 9 * Math.cos(rad);
-      const y1 = 16 + 9 * Math.sin(rad);
-      const x2 = 16 + 13.5 * Math.cos(rad);
-      const y2 = 16 + 13.5 * Math.sin(rad);
-      return (
-        <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="url(#logoGrad)" strokeWidth="1.5" strokeLinecap="round" />
-      );
+      const x1 = 16 + 7 * Math.cos(rad);
+      const y1 = 16 + 7 * Math.sin(rad);
+      const x2 = 16 + 11.5 * Math.cos(rad);
+      const y2 = 16 + 11.5 * Math.sin(rad);
+      return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#0A0A0A" strokeWidth="2" strokeLinecap="square" />;
     })}
-    <defs>
-      <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#fcd34d" />
-        <stop offset="1" stopColor="#f97316" />
-      </linearGradient>
-    </defs>
   </svg>
 );
 
@@ -39,198 +38,314 @@ const GithubIcon = () => (
   </svg>
 );
 
-// ─── Page ──────────────────────────────────────────────────────────────────────
+// ─── Ticker items ─────────────────────────────────────────────────────────────
+
+const TICKER_ITEMS = [
+  "⚡ Solis Escrow · Trustless Bounties on Stellar",
+  "🔒 Secured by Soroban Smart Contracts",
+  "🌍 Fees under $0.01 · 5-second finality",
+  "💰 Multi-Asset: XLM & USDC",
+  "🤝 Non-custodial · Multi-party release",
+  "🟢 Green Belt Milestone · Level 4",
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
   return (
-    <div
-      className="min-h-screen flex flex-col relative"
-      style={{ background: "var(--bg-base)" }}
-    >
-      {/* ── Background layers ──────────────────────────────────────────────── */}
-      <div className="fixed inset-0 bg-grid pointer-events-none" />
-      <div className="fixed inset-0 bg-radial-glow pointer-events-none" />
+    <div className="bg-brutal" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
 
-      {/* Floating orbs */}
-      <div
-        className="fixed pointer-events-none"
-        style={{
-          top: "10%",
-          left: "5%",
-          width: "500px",
-          height: "500px",
-          background: "radial-gradient(circle, rgba(245,158,11,0.04) 0%, transparent 70%)",
-          borderRadius: "50%",
-          filter: "blur(40px)",
-        }}
-      />
-      <div
-        className="fixed pointer-events-none"
-        style={{
-          bottom: "15%",
-          right: "5%",
-          width: "400px",
-          height: "400px",
-          background: "radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)",
-          borderRadius: "50%",
-          filter: "blur(40px)",
-        }}
-      />
-
-      {/* ── Navbar ─────────────────────────────────────────────────────────── */}
+      {/* ── Navbar ── */}
       <header
-        className="relative z-20 w-full"
         style={{
-          borderBottom: "1px solid var(--border-subtle)",
-          background: "rgba(7,8,12,0.7)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
+          background: "#0A0A0A",
+          borderBottom: "4px solid #0A0A0A",
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
         }}
       >
-        <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <nav
+          style={{
+            maxWidth: 1280,
+            margin: "0 auto",
+            padding: "0 20px",
+            height: 64,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 20,
+          }}
+        >
           {/* Brand */}
-          <div className="flex items-center gap-3">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <SolisLogo />
-            <div className="flex flex-col">
-              <span
+            <div>
+              <div
                 style={{
-                  fontSize: "1rem",
-                  fontWeight: 700,
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 800,
+                  fontSize: "1.1rem",
+                  color: "#FFE600",
                   letterSpacing: "-0.03em",
                   lineHeight: 1,
                 }}
-                className="text-gradient"
               >
-                Solis Escrow
-              </span>
-              <span
+                SOLIS ESCROW
+              </div>
+              <div
                 style={{
-                  fontSize: "0.625rem",
-                  color: "var(--text-muted)",
-                  letterSpacing: "0.1em",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.6rem",
+                  color: "rgba(255,255,255,0.4)",
+                  letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   lineHeight: 1.2,
+                  marginTop: 2,
                 }}
               >
-                Stellar Testnet
-              </span>
+                Stellar Testnet · Green Belt
+              </div>
             </div>
           </div>
 
-          {/* Nav links (desktop) */}
+          {/* Desktop nav links */}
           <div
-            className="hidden md:flex items-center gap-6"
-            style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}
+            className="hidden md:flex items-center gap-1"
+            style={{ fontFamily: "var(--font-display)" }}
           >
-            {["Bounties", "How it Works", "Docs"].map((label) => (
+            {["Explorer", "How it Works", "Docs"].map((label) => (
               <a
                 key={label}
                 href="#"
-                className="transition-colors hover:text-white"
-                style={{ textDecoration: "none", color: "inherit" }}
+                className="nav-link"
               >
                 {label}
               </a>
             ))}
           </div>
 
-          {/* Wallet connect */}
+          {/* Wallet */}
           <WalletConnect />
         </nav>
       </header>
 
-      {/* ── Hero ───────────────────────────────────────────────────────────── */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-6 py-20">
-        {/* Hero badge */}
-        <div className="badge badge-amber mb-6 animate-fade-in-up">
-          <span>⚡</span>
-          White Belt Milestone · Stellar Testnet
-        </div>
-
-        {/* Hero headline */}
-        <h1
-          className="text-center animate-fade-in-up delay-100"
-          style={{
-            fontSize: "clamp(2rem, 6vw, 3.75rem)",
-            fontWeight: 800,
-            letterSpacing: "-0.04em",
-            lineHeight: 1.1,
-            maxWidth: "800px",
-            marginBottom: "24px",
-          }}
-        >
-          <span className="text-gradient-subtle">Trustless Bounties</span>
-          <br />
-          <span className="text-gradient">Powered by Stellar</span>
-        </h1>
-
-        {/* Sub-headline */}
-        <p
-          className="text-center animate-fade-in-up delay-200"
-          style={{
-            fontSize: "clamp(0.9375rem, 2vw, 1.125rem)",
-            color: "var(--text-secondary)",
-            maxWidth: "520px",
-            lineHeight: 1.7,
-            marginBottom: "56px",
-          }}
-        >
-          Pledge XLM to open-source bounties secured by Soroban smart contracts.
-          Funds release automatically when milestones are verified on-chain.
-        </p>
-
-        {/* Bounty card */}
-        <div
-          className="w-full animate-fade-in-up delay-300"
-          style={{ maxWidth: "460px" }}
-        >
-          <BountyCard />
-        </div>
-
-        {/* Feature pills */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mt-10 animate-fade-in-up delay-400">
-          {[
-            { emoji: "🔒", label: "Non-custodial escrow" },
-            { emoji: "⚡", label: "5-second finality" },
-            { emoji: "🌍", label: "< $0.01 fees" },
-            { emoji: "🤝", label: "Multi-party release" },
-          ].map(({ emoji, label }) => (
-            <div
-              key={label}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl"
+      {/* ── Ticker tape ── */}
+      <div className="ticker-wrap" style={{ padding: "9px 0" }}>
+        <div className="ticker-inner">
+          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+            <span
+              key={i}
               style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid var(--border-subtle)",
-                fontSize: "0.8125rem",
-                color: "var(--text-secondary)",
+                display: "inline-block",
+                padding: "0 32px",
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: "0.82rem",
+                letterSpacing: "0.04em",
+                color: "#0A0A0A",
+                whiteSpace: "nowrap",
               }}
             >
-              <span>{emoji}</span>
-              {label}
-            </div>
+              {item}
+            </span>
           ))}
         </div>
+      </div>
+
+      {/* ── Hero section ── */}
+      <section
+        style={{
+          background: "#0A0A0A",
+          borderBottom: "4px solid #0A0A0A",
+          padding: "48px 20px 52px",
+        }}
+      >
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+          {/* Milestone badge */}
+          <div
+            className="animate-pop-in"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#FF2D78",
+              border: "3px solid #FF2D78",
+              boxShadow: "4px 4px 0px #FF2D78",
+              padding: "6px 16px",
+              marginBottom: 24,
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: "0.75rem",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: "#FFF",
+            }}
+          >
+            <span className="dot-live" />
+            Green Belt Milestone · Level 4 Submission
+          </div>
+
+          {/* Hero title */}
+          <h1
+            className="animate-pop-in delay-100"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: "clamp(2.2rem, 6vw, 4.5rem)",
+              lineHeight: 1.0,
+              letterSpacing: "-0.04em",
+              color: "#FFE600",
+              maxWidth: 900,
+              marginBottom: 18,
+            }}
+          >
+            Trustless Escrow.<br />
+            <span style={{ color: "#00F5FF" }}>Stellar-Powered.</span><br />
+            <span style={{ color: "#FF2D78" }}>Open to Everyone.</span>
+          </h1>
+
+          {/* Sub-headline */}
+          <p
+            className="animate-pop-in delay-200"
+            style={{
+              color: "rgba(255,255,255,0.6)",
+              fontWeight: 600,
+              fontSize: "clamp(0.95rem, 2vw, 1.15rem)",
+              maxWidth: 600,
+              lineHeight: 1.65,
+              marginBottom: 32,
+            }}
+          >
+            Browse and pledge to decentralized escrows created by builders across the Stellar network.
+            Every escrow is secured by a Soroban smart contract. Funds release automatically.
+          </p>
+
+          {/* Feature pills */}
+          <div className="flex flex-wrap gap-3 animate-pop-in delay-300">
+            {[
+              { icon: "🔒", label: "Non-custodial" },
+              { icon: "⚡", label: "5-second finality" },
+              { icon: "🌍", label: "< $0.01 fees" },
+              { icon: "🤝", label: "Multi-party release" },
+              { icon: "💱", label: "XLM + USDC" },
+              { icon: "📜", label: "Soroban contracts" },
+            ].map(({ icon, label }) => (
+              <div
+                key={label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "2px solid rgba(255,255,255,0.12)",
+                  padding: "7px 14px",
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 700,
+                  fontSize: "0.8rem",
+                  color: "rgba(255,255,255,0.75)",
+                }}
+              >
+                <span>{icon}</span>
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Explorer section ── */}
+      <main style={{ flex: 1 }}>
+        {/* Section header */}
+        <div
+          style={{
+            maxWidth: 1280,
+            margin: "0 auto",
+            padding: "36px 20px 20px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 6 }}>
+            <div>
+              <h2
+                className="animate-slide-up"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 800,
+                  fontSize: "clamp(1.5rem, 4vw, 2.2rem)",
+                  letterSpacing: "-0.03em",
+                  color: "#0A0A0A",
+                  lineHeight: 1.1,
+                  marginBottom: 6,
+                }}
+              >
+                🔍 Escrow Explorer
+              </h2>
+              <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "rgba(10,10,10,0.55)" }}>
+                Browse all active escrows on the Stellar Testnet network. Pledge to any escrow below.
+              </p>
+            </div>
+            <div
+              style={{
+                background: "#B8FF47",
+                border: "3px solid #0A0A0A",
+                boxShadow: "4px 4px 0px #0A0A0A",
+                padding: "8px 16px",
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: "0.8rem",
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              🛰️ Live · Stellar Testnet
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 4, background: "#0A0A0A", marginTop: 16, marginBottom: 28 }} />
+        </div>
+
+        {/* Feed */}
+        <EscrowExplorer />
       </main>
 
-      {/* ── Footer ─────────────────────────────────────────────────────────── */}
+      {/* ── Footer ── */}
       <footer
-        className="relative z-10 w-full"
         style={{
-          borderTop: "1px solid var(--border-subtle)",
-          padding: "20px 24px",
+          background: "#0A0A0A",
+          borderTop: "4px solid #0A0A0A",
+          padding: "24px 20px",
         }}
       >
         <div
-          className="max-w-6xl mx-auto flex items-center justify-between"
-          style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}
+          style={{
+            maxWidth: 1280,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
         >
-          <span>© 2026 Solis Escrow · Built on Stellar</span>
-          <div className="flex items-center gap-4">
-            <a href="#" className="hover:text-white transition-colors" style={{ color: "inherit", textDecoration: "none", display: "flex", alignItems: "center", gap: "6px" }}>
-              <GithubIcon />
-              GitHub
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <SolisLogo />
+            <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "0.85rem", color: "rgba(255,255,255,0.5)" }}>
+              © 2026 Solis Escrow · Built on Stellar · Green Belt L4
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <a
+              href="https://github.com/solis-escrow"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="footer-link"
+            >
+              <GithubIcon /> GitHub
             </a>
-            <span>Testnet only · Not for production use</span>
+            <span style={{ color: "rgba(255,255,255,0.25)", fontWeight: 700, fontSize: "0.78rem" }}>
+              Testnet only · Not for production
+            </span>
           </div>
         </div>
       </footer>
