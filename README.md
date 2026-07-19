@@ -9,7 +9,10 @@ Solis Escrow allows open-source projects, backers, and developers to create trus
 ## 🔗 Important Links
 
 * **Live Demo URL:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)
-* **Demo Video Walkthrough:** [Google Drive Demo Video](https://drive.google.com/file/d/1LQuwgZo4NE4HXsH8mE1zwqwE3S5eLAAo/view?usp=sharing)
+
+### 📺 Project Demo Videos
+* **Level 4 (Green Belt MVP - Neo-Brutalist Dashboard & Live Testnet Pledges):** [Watch Level 4 Demo Video](https://drive.google.com/file/d/1rTfmRB5bNei6n_PztPHb5Mf8Dxy_FO4a/view?usp=sharing)
+* **Level 3 (Initial Prototype - Basic Smart Contract Interactions):** [Watch Level 3 Demo Video](https://drive.google.com/file/d/1LQuwgZo4NE4HXsH8mE1zwqwE3S5eLAAo/view?usp=sharing)
 
 ---
 
