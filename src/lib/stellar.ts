@@ -101,7 +101,7 @@ export const XLM_SAC_CONTRACT_ID =
  */
 const CONTRACT_ID_REGEX = /^C[A-Z2-7]{55}$/;
 
-/** The old Orange Belt contract — used as placeholder sentinel so new ID is green. */
+/** The old V0 contract — used as placeholder sentinel so new ID is green. */
 const PLACEHOLDER_ID = "CD2EXRDHSQUZYJZ3MTL25K5LJJI7O7HCVZEZM7IFLUXHJISRB24VNT53";
 
 export type ContractIdStatus = "placeholder" | "invalid" | "valid";
