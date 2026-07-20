@@ -45,8 +45,7 @@ const TICKER_ITEMS = [
   "🔒 Secured by Soroban Smart Contracts",
   "🌍 Fees under $0.01 · 5-second finality",
   "💰 Multi-Asset: XLM & USDC",
-  "🤝 Non-custodial · Multi-party release",
-  "🟢 Green Belt Milestone · Level 4",
+  "🟢 Solis Escrow V1 Active",
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -104,7 +103,7 @@ export default function Home() {
                   marginTop: 2,
                 }}
               >
-                Stellar Testnet · Green Belt
+                Stellar Testnet
               </div>
             </div>
           </div>
@@ -183,7 +182,7 @@ export default function Home() {
             }}
           >
             <span className="dot-live" />
-            Green Belt Milestone · Level 4 Submission
+            Solis Escrow V1
           </div>
 
           {/* Hero title */}
@@ -331,7 +330,7 @@ export default function Home() {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <SolisLogo />
             <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "0.85rem", color: "rgba(255,255,255,0.5)" }}>
-              © 2026 Solis Escrow · Built on Stellar · Green Belt L4
+              © 2026 Solis Escrow · Built on Stellar
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
