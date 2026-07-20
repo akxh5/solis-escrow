@@ -85,25 +85,12 @@ export function EscrowProvider({ children }: { children: ReactNode }) {
               };
             } catch (err) {
               console.error(`Failed to fetch live contract state for ${escrow.contractId}:`, err);
-              // Complete removal of mock fallback for failed reads.
-              // If the on-chain data is unreachable, we disable pledging entirely.
-              return {
-                ...escrow,
-                goalAmount: 0,
-                pledgedTotal: 0,
-                fundingPct: 100, // Caps visual bar
-                status: "CANCELLED" as EscrowStatus,
-              };
+              // Gracefully degrade to mock data so UI layout is preserved
+              return { ...escrow, _liveFetchFailed: true };
             }
           }
-          // If contract ID is invalid entirely (e.g. placeholder), block it.
-          return {
-            ...escrow,
-            goalAmount: 0,
-            pledgedTotal: 0,
-            fundingPct: 100,
-            status: "CANCELLED" as EscrowStatus,
-          };
+          // If contract ID is invalid entirely, degrade to mock
+          return { ...escrow, _liveFetchFailed: true };
         })
       );
 
