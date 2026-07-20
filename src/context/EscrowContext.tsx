@@ -65,13 +65,10 @@ export function EscrowProvider({ children }: { children: ReactNode }) {
       // Level 5: replace with `await (await fetch("/api/escrows")).json()`
       const data = await fetchEscrowListings();
 
-      // Override mock data with true live on-chain state for our active contract
+      // Override mock data with true live on-chain state for ALL valid contracts
       const liveData = await Promise.all(
         data.map(async (escrow) => {
-          if (
-            escrow.contractId === ESCROW_CONTRACT_ID &&
-            getContractIdStatus(escrow.contractId) === "valid"
-          ) {
+          if (getContractIdStatus(escrow.contractId) === "valid") {
             try {
               const { goalStr, totalStr } = await fetchContractEscrowState(escrow.contractId);
               // Values are in stroops (10^-7), so divide by 10,000,000 to get XLM
@@ -87,10 +84,26 @@ export function EscrowProvider({ children }: { children: ReactNode }) {
                 status: fundingPct >= 100 ? "FUNDED" : escrow.status,
               };
             } catch (err) {
-              console.error("Failed to fetch live contract state:", err);
+              console.error(`Failed to fetch live contract state for ${escrow.contractId}:`, err);
+              // Complete removal of mock fallback for failed reads.
+              // If the on-chain data is unreachable, we disable pledging entirely.
+              return {
+                ...escrow,
+                goalAmount: 0,
+                pledgedTotal: 0,
+                fundingPct: 100, // Caps visual bar
+                status: "CANCELLED",
+              };
             }
           }
-          return escrow;
+          // If contract ID is invalid entirely (e.g. placeholder), block it.
+          return {
+            ...escrow,
+            goalAmount: 0,
+            pledgedTotal: 0,
+            fundingPct: 100,
+            status: "CANCELLED",
+          };
         })
       );
 
