@@ -20,7 +20,7 @@ The following table documents user-initiated `pledge` transactions on Stellar Te
 | Tester 3 | `GC26DF...EAPGPH` | `14da38f1beec6e1d1ebd3182f7ee8e87e86836a0828594d74c8a035c181a549d` | XLM | Success | Fast confirmation time, user interface guided the pledge process intuitively. |
 | Tester 4 | `GBXAEO...YISQZP` | `c7e8750bc8737a12e986e07af5e8e5cd62e4c676cadcf5b461d8024a0f4ad165` | XLM | Success | Clear UI flow, transaction confirmed without any lag. |
 | Tester 5 | `GAQ7LM...IRSQ4S` | `4347e14fd2309be3ad8187842ec2ac411c59858c5e6d90e53ed74e6735cbb206` | XLM | Success | Effortless process, progress bar kept me fully informed. |
-| Tester 6 | | | | | |
+| Tester 6 | `GAXHBT...MUAB5C` | `173b73684c5031f6ac89e82c3c44658843dd01d26b914ae25fe1b86891f743b2` | XLM | Success | No friction, wallet connected instantly. |
 | Tester 7 | | | | | |
 | Tester 8 | | | | | |
 | Tester 9 | | | | | |
