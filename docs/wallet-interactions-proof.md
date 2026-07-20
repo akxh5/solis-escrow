@@ -22,7 +22,7 @@ The following table documents user-initiated `pledge` transactions on Stellar Te
 | Tester 5 | `GAQ7LM...IRSQ4S` | `4347e14fd2309be3ad8187842ec2ac411c59858c5e6d90e53ed74e6735cbb206` | XLM | Success | Effortless process, progress bar kept me fully informed. |
 | Tester 6 | `GAXHBT...MUAB5C` | `173b73684c5031f6ac89e82c3c44658843dd01d26b914ae25fe1b86891f743b2` | XLM | Success | No friction, wallet connected instantly. |
 | Tester 7 | `GDVOP4...FYKHZF` | `e33d4709691f6eb85a9971799b01cd8ed9bbff43865cf0302aa53700c6e3ba76` | XLM | Success | First pledge to the new V1 contract (CA4Z...5ZMS), UI immediately responded perfectly. |
-| Tester 8 | | | | | |
+| Tester 8 | `GCWIL6...X2S7HD` | `4903413b9830b9920407227beefc04201b28772ad6411695903d0d126112e280` | XLM | Success | Fast execution against the new V1 testnet contract without errors. |
 | Tester 9 | | | | | |
 | Tester 10 | | | | | |
 
