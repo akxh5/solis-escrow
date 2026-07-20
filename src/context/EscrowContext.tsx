@@ -26,7 +26,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { EscrowListing, AssetSymbol } from "@/lib/escrowTypes";
+import type { EscrowListing, AssetSymbol, EscrowStatus } from "@/lib/escrowTypes";
 import { fetchEscrowListings } from "@/lib/mockEscrows";
 import { fetchContractEscrowState, ESCROW_CONTRACT_ID, getContractIdStatus } from "@/lib/stellar";
 
@@ -92,7 +92,7 @@ export function EscrowProvider({ children }: { children: ReactNode }) {
                 goalAmount: 0,
                 pledgedTotal: 0,
                 fundingPct: 100, // Caps visual bar
-                status: "CANCELLED",
+                status: "CANCELLED" as EscrowStatus,
               };
             }
           }
@@ -102,7 +102,7 @@ export function EscrowProvider({ children }: { children: ReactNode }) {
             goalAmount: 0,
             pledgedTotal: 0,
             fundingPct: 100,
-            status: "CANCELLED",
+            status: "CANCELLED" as EscrowStatus,
           };
         })
       );
