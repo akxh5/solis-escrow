@@ -3,7 +3,7 @@
 > **Review Status:** 🟠 Orange Belt → Level 4 Submission  
 > **Document Owner:** Akshansh (akxh5)  
 > **Network:** Stellar Testnet  
-> **Contract:** `CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ`  
+> **Contracts:** `CA4ZEVCVB2N7N7M3SN3BDTRLXLNCQX4GHP7IY57MCGYTQLSWE6UO5ZMS` (V1) & `CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ` (V0)
 > **Live Demo:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)  
 > **Last Updated:** 2026-07-18
 
@@ -21,7 +21,7 @@ The following table documents user-initiated `pledge` transactions on Stellar Te
 | Tester 4 | `GBXAEO...YISQZP` | `c7e8750bc8737a12e986e07af5e8e5cd62e4c676cadcf5b461d8024a0f4ad165` | XLM | Success | Clear UI flow, transaction confirmed without any lag. |
 | Tester 5 | `GAQ7LM...IRSQ4S` | `4347e14fd2309be3ad8187842ec2ac411c59858c5e6d90e53ed74e6735cbb206` | XLM | Success | Effortless process, progress bar kept me fully informed. |
 | Tester 6 | `GAXHBT...MUAB5C` | `173b73684c5031f6ac89e82c3c44658843dd01d26b914ae25fe1b86891f743b2` | XLM | Success | No friction, wallet connected instantly. |
-| Tester 7 | | | | | |
+| Tester 7 | `GDVOP4...FYKHZF` | `e33d4709691f6eb85a9971799b01cd8ed9bbff43865cf0302aa53700c6e3ba76` | XLM | Success | First pledge to the new V1 contract (CA4Z...5ZMS), UI immediately responded perfectly. |
 | Tester 8 | | | | | |
 | Tester 9 | | | | | |
 | Tester 10 | | | | | |
