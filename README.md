@@ -49,16 +49,26 @@ graph TD
 
 ## 📜 Smart Contract Verification (Stellar Testnet)
 
-### V2 — Multi-Asset Escrow Vault (Current)
+### V1 — Active Campaign (50,000 XLM Goal)
+
+- **Deployed Contract ID:** `CA4ZEVCVB2N7N7M3SN3BDTRLXLNCQX4GHP7IY57MCGYTQLSWE6UO5ZMS`
+- **Deploy Transaction:** `6ea418f452ea1fa716fbf8592a2b7d2c892375c97e3ed10e226f8a12517da62c`
+- **Initialize Transaction:** `43ace727494ae7c90d40ba12334a733a4c5fa764ace1b3de4b46e11fb232a64b`
+- **Configured Asset:** Native XLM SAC — `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+- **Deadline:** Ledger `4,700,000`
+
+🔗 [View Active Contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CA4ZEVCVB2N7N7M3SN3BDTRLXLNCQX4GHP7IY57MCGYTQLSWE6UO5ZMS)
+
+### V0 — Campaign 1 (Closed, 5,000 XLM Goal Met)
 
 - **Deployed Contract ID:** `CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ`
 - **Upload Transaction:** `c3424a9cc1f83f44020f5e7cfc64e4676414fde6907875914644bd6d4097e8de`
 - **Deploy Transaction:** `1d33e6c66f35718d3f895d54302ea36d3c8904e50cc7e01a97d39c7ef6fcb268`
 - **Initialize Transaction:** `f7f0373cdb6a93bf5269ca9c8da3020072719457c8c5dfd54f69837da7792ef7`
 - **Configured Asset:** Native XLM SAC — `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
-- **Deadline:** Ledger `4,649,406` (~57 days from deployment)
+- **Deadline:** Ledger `4,649,406`
 
-🔗 [View V2 Contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ)
+🔗 [View Closed Contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ)
 
 ### V1 — Orange Belt Escrow Vault (Reference)
 
