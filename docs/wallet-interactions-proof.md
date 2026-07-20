@@ -24,6 +24,6 @@ The following table documents user-initiated `pledge` transactions on Stellar Te
 | Tester 7 | `GDVOP4...FYKHZF` | `e33d4709691f6eb85a9971799b01cd8ed9bbff43865cf0302aa53700c6e3ba76` | XLM | Success | First pledge to the new V1 contract (CA4Z...5ZMS), UI immediately responded perfectly. |
 | Tester 8 | `GCWIL6...X2S7HD` | `4903413b9830b9920407227beefc04201b28772ad6411695903d0d126112e280` | XLM | Success | Fast execution against the new V1 testnet contract without errors. |
 | Tester 9 | `GABXYP...HPVBXU` | `62f1aa446a278843c900ef2ee7ce9a6fe34c514b8f7f3a4aa07068b28c48e716` | XLM | Success | Very smooth interaction on the V1 contract, balance updated instantly. |
-| Tester 10 | | | | | |
+| Tester 10 | `GASOTD...7SASGH` | `8f72457f7e42ee0b3fb27f1c581a356609f795627fcda16720da2e25c8781a55` | XLM | Success | Final test complete, wallet connection and transaction signing were flawless. |
 
 > 🔗 All successful transactions are verifiable at [Stellar Expert Testnet Explorer](https://stellar.expert/explorer/testnet).
