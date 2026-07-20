@@ -19,7 +19,7 @@ The following table documents user-initiated `pledge` transactions on Stellar Te
 | Tester 2 | `GAA5UB...J6OG56` | `4530bff94a43c7a980aca6940999f59459bec5c623cff878dc59d7341c84f96e` | XLM | Success | Seamless pledge execution, testnet confirmed. |
 | Tester 3 | `GC26DF...EAPGPH` | `14da38f1beec6e1d1ebd3182f7ee8e87e86836a0828594d74c8a035c181a549d` | XLM | Success | Fast confirmation time, user interface guided the pledge process intuitively. |
 | Tester 4 | `GBXAEO...YISQZP` | `c7e8750bc8737a12e986e07af5e8e5cd62e4c676cadcf5b461d8024a0f4ad165` | XLM | Success | Clear UI flow, transaction confirmed without any lag. |
-| Tester 5 | | | | | |
+| Tester 5 | `GAQ7LM...IRSQ4S` | `4347e14fd2309be3ad8187842ec2ac411c59858c5e6d90e53ed74e6735cbb206` | XLM | Success | Effortless process, progress bar kept me fully informed. |
 | Tester 6 | | | | | |
 | Tester 7 | | | | | |
 | Tester 8 | | | | | |
