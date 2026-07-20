@@ -12,7 +12,7 @@ import type { EscrowListing } from "./escrowTypes";
 export const MOCK_ESCROWS: EscrowListing[] = [
   {
     id: "esc-001",
-    contractId: "CAJRAKMQL6AIPWZMOS7PW457RF6T6C67D7EPQIT2TXIPNAHRZX5XYWEZ",
+    contractId: "CA4ZEVCVB2N7N7M3SN3BDTRLXLNCQX4GHP7IY57MCGYTQLSWE6UO5ZMS",
     creatorWallet: "GDQJUTQYK2MQX2ZJARTPAYUJDEFKMPH7GCD5HXN5EOQ4A5ISYS5PUH4",
     title: "Build Solis Escrow Smart Contract",
     description:
