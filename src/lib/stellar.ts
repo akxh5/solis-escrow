@@ -28,10 +28,12 @@ import {
   Address,
   Asset,
   nativeToScVal,
+  scValToNative,
   xdr,
   BASE_FEE,
   Transaction,
   FeeBumpTransaction,
+  Account,
 } from "@stellar/stellar-sdk";
 import { StellarWalletsKit } from "@creit.tech/stellar-wallets-kit";
 
@@ -521,4 +523,31 @@ export function validatePledgeAmount(
     return `Insufficient balance. Max pledgeable: ${available.toFixed(4)} XLM (2 XLM reserve).`;
 
   return null;
+}
+
+// ─── Live Escrow State Fetcher ────────────────────────────────────────────────
+export async function fetchContractEscrowState(contractId: string): Promise<{ goalStr: string; totalStr: string }> {
+  const rpc = getRpcServer();
+  const contract = new Contract(contractId);
+  // We use a known valid testnet account just for constructing the simulation envelope
+  const source = new Account("GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5", "0");
+
+  async function simulateRead(method: string) {
+    const tx = new TransactionBuilder(source, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
+      .addOperation(contract.call(method))
+      .setTimeout(30)
+      .build();
+    
+    const sim = await rpc.simulateTransaction(tx);
+    if (SorobanRpc.Api.isSimulationError(sim)) {
+       throw new Error(typeof sim.error === "string" ? sim.error : JSON.stringify(sim.error));
+    }
+    if (!sim.result) throw new Error(`No result in simulation for ${method}`);
+    return scValToNative(sim.result.retval);
+  }
+
+  const goal = await simulateRead("get_goal");
+  const total = await simulateRead("get_total");
+
+  return { goalStr: goal.toString(), totalStr: total.toString() };
 }
