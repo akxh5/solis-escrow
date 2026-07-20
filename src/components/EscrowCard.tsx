@@ -123,7 +123,7 @@ export default function EscrowCard({ escrow, index }: EscrowCardProps) {
   const accent       = ACCENT_MAP[escrow.accentColor] ?? ACCENT_MAP.yellow;
   const isFullyFunded = escrow.fundingPct >= 100;
   const isReleased    = escrow.status === "RELEASED";
-  const canPledge     = escrow.status === "ACTIVE" || escrow.status === "FUNDED";
+  const canPledge     = (escrow.status === "ACTIVE" || escrow.status === "FUNDED") && !isFullyFunded;
 
   // Called by PledgeModal on successful on-chain confirmation
   const handleModalSuccess = useCallback(
@@ -391,7 +391,7 @@ export default function EscrowCard({ escrow, index }: EscrowCardProps) {
               >
                 <span>
                   {isFullyFunded
-                    ? "⚡ Fully Funded — Pledge More"
+                    ? "✅ Goal Met — Pledges Closed"
                     : "⚡ Pledge to This Escrow"}
                 </span>
                 {canPledge && <ArrowIcon />}
