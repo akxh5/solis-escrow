@@ -24,7 +24,7 @@ export interface PledgeSuccessBannerProps {
   /** Full Stellar transaction hash (64-char hex). */
   txHash: string;
   /** Pledged amount in stroops (raw i128 from Soroban). Will be formatted to XLM. */
-  amountStroops: bigint | number;
+  amountStroops: number;
   /** Asset symbol shown in the banner, e.g. "XLM" or "USDC". */
   asset: string;
   /** Called when user clicks × or the auto-dismiss timer expires. */
@@ -35,14 +35,13 @@ export interface PledgeSuccessBannerProps {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const STROOPS_PER_XLM = 10_000_000n;
+const STROOPS_PER_XLM = 10_000_000;
 
-function stroopsToXLM(stroops: bigint | number): string {
-  const big = typeof stroops === "number" ? BigInt(Math.round(stroops)) : stroops;
-  const whole = big / STROOPS_PER_XLM;
-  const frac  = big % STROOPS_PER_XLM;
-  if (frac === 0n) return whole.toString();
-  return `${whole}.${frac.toString().padStart(7, "0").replace(/0+$/, "")}`;
+function stroopsToXLM(stroops: number): string {
+  const whole = Math.floor(stroops / STROOPS_PER_XLM);
+  const frac  = stroops % STROOPS_PER_XLM;
+  if (frac === 0) return whole.toString();
+  return `${whole}.${String(frac).padStart(7, "0").replace(/0+$/, "")}`;
 }
 
 function truncateHash(hash: string, head = 8, tail = 8): string {
