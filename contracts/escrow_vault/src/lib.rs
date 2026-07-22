@@ -12,6 +12,12 @@
 //!   - `pledge` now accepts `asset: Address` and validates it matches the
 //!     configured asset before pulling funds via the token SAC interface.
 //!   - Supports Native XLM SAC and USDC SAC interchangeably.
+//!
+//! Level 5 additions (Blue Belt):
+//!   - TTL extension on every mutating call — prevents instance storage expiry
+//!     during active campaigns (rent optimisation).
+//!   - Structured `lock` / `unlock` events scaffold for milestone-phase analytics.
+//!   - Persistent storage TTL bump pattern prepared for per-pledger records.
 
 use soroban_sdk::{
     contract, contractimpl, contracttype, contracterror,
@@ -83,6 +89,31 @@ pub struct EscrowVault;
 
 #[contractimpl]
 impl EscrowVault {
+    // ── TTL helpers ─────────────────────────────────────────────────────────────
+
+    /// Bumps instance storage TTL so the vault state never expires while a
+    /// campaign is still live. Called at the end of every mutating operation.
+    ///
+    /// `min_ledgers_to_live`  — how many additional ledgers of lifetime to
+    ///   guarantee (≈ 7 days at 5 s/ledger → 120_960 ledgers).
+    fn bump_instance_ttl(env: &Env) {
+        const TTL_BUMP_LEDGERS: u32 = 120_960; // ~7 days
+        env.storage()
+            .instance()
+            .extend_ttl(TTL_BUMP_LEDGERS, TTL_BUMP_LEDGERS);
+    }
+
+    /// Bumps TTL for a specific persistent pledger record key.
+    ///
+    /// Per-pledger records are in instance storage right now; this helper is
+    /// wired up so migration to `persistent()` in a future upgrade is trivial.
+    fn bump_pledger_ttl(env: &Env, key: &Address) {
+        const PLEDGER_TTL: u32 = 241_920; // ~14 days
+        // Currently a no-op guard — will be active when pledger data moves
+        // to env.storage().persistent() during the Level 5 storage refactor.
+        let _ = (env, key, PLEDGER_TTL); // suppress unused warnings
+    }
+
     // ── initialize ──────────────────────────────────────────────────────────────
 
     /// Set up the vault. Can only be called once.
@@ -109,6 +140,9 @@ impl EscrowVault {
         env.storage().instance().set(&KEY_TOTAL,    &0_i128);
         env.storage().instance().set(&KEY_CLAIMED,  &false);
         env.storage().instance().set(&KEY_ASSET,    &asset);
+
+        // Bump TTL on init so the vault doesn't expire before the deadline
+        Self::bump_instance_ttl(&env);
 
         log!(&env, "EscrowVault initialized: goal={}, deadline={}, asset={}", goal, deadline, asset);
         Ok(())
@@ -170,6 +204,10 @@ impl EscrowVault {
         };
         env.storage().instance().set(&pledger, &record);
 
+        // Bump TTL on every pledge to extend campaign state lifetime
+        Self::bump_instance_ttl(&env);
+        Self::bump_pledger_ttl(&env, &pledger);
+
         env.events().publish(
             (symbol_short!("pledge"), pledger.clone()),
             amount,
@@ -226,6 +264,9 @@ impl EscrowVault {
         let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
         let token_client = token::Client::new(&env, &asset);
         token_client.transfer(&env.current_contract_address(), &admin, &total);
+
+        // Bump TTL one final time so the claimed state remains queryable
+        Self::bump_instance_ttl(&env);
 
         env.events().publish(
             (symbol_short!("claim"), admin.clone()),
@@ -291,6 +332,9 @@ impl EscrowVault {
         let token_client = token::Client::new(&env, &asset);
         token_client.transfer(&env.current_contract_address(), &pledger, &refund_amount);
 
+        // Bump TTL so remaining pledger records stay accessible
+        Self::bump_instance_ttl(&env);
+
         env.events().publish(
             (symbol_short!("refund"), pledger.clone()),
             refund_amount,
@@ -298,6 +342,65 @@ impl EscrowVault {
 
         log!(&env, "refund: pledger={}, amount={}", pledger, refund_amount);
         Ok(refund_amount)
+    }
+
+    // ── lock / unlock event scaffolds ────────────────────────────────────────────
+
+    /// Emits a `lock` event signalling the campaign has hit its goal and
+    /// further pledges are now closed. Callable by admin only.
+    ///
+    /// This is a *scaffold* for the Level 5 milestone-phase state machine.
+    /// The full state-transition guard will be wired in a follow-up commit once
+    /// the `LOCKED` storage key is introduced.
+    pub fn emit_lock(env: Env, admin: Address) -> Result<(), Error> {
+        admin.require_auth();
+
+        if !env.storage().instance().has(&KEY_GOAL) {
+            return Err(Error::NotInitialized);
+        }
+
+        let stored_admin: Address = env.storage().instance().get(&KEY_ADMIN).unwrap();
+        if admin != stored_admin {
+            return Err(Error::Unauthorized);
+        }
+
+        env.events().publish(
+            (symbol_short!("lock"), admin.clone()),
+            env.ledger().sequence(),
+        );
+
+        log!(&env, "campaign_locked: admin={}, ledger={}", admin, env.ledger().sequence());
+        Ok(())
+    }
+
+    /// Emits an `unlock` event signalling the campaign deadline has expired
+    /// without meeting goal — refund window is now open. Callable by admin.
+    ///
+    /// This is a *scaffold* for the Level 5 milestone-phase state machine.
+    pub fn emit_unlock(env: Env, admin: Address) -> Result<(), Error> {
+        admin.require_auth();
+
+        if !env.storage().instance().has(&KEY_GOAL) {
+            return Err(Error::NotInitialized);
+        }
+
+        let stored_admin: Address = env.storage().instance().get(&KEY_ADMIN).unwrap();
+        if admin != stored_admin {
+            return Err(Error::Unauthorized);
+        }
+
+        let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
+        if env.ledger().sequence() < deadline {
+            return Err(Error::ClaimNotAllowed); // deadline not yet passed
+        }
+
+        env.events().publish(
+            (symbol_short!("unlock"), admin.clone()),
+            env.ledger().sequence(),
+        );
+
+        log!(&env, "campaign_unlocked: admin={}, ledger={}", admin, env.ledger().sequence());
+        Ok(())
     }
 
     // ── read-only getters ────────────────────────────────────────────────────────
