@@ -101,6 +101,12 @@ pub enum Error {
 
     /// The asset address provided does not match the configured asset.
     AssetMismatch       = 9,
+
+    /// `release_escrow_funds` was called but funds have already been disbursed.
+    AlreadyDisbursed    = 10,
+
+    /// `release_escrow_funds` was called before the funding goal was reached.
+    GoalNotMet          = 11,
 }
 
 // ─── Contract ─────────────────────────────────────────────────────────────────
@@ -519,6 +525,164 @@ impl EscrowVault {
         };
 
         Ok(status)
+    }
+
+    // ── release_escrow_funds (Phase 2 / Task 1) ──────────────────────────────────
+
+    /// Transfer the full escrow balance to the admin after a successful campaign.
+    ///
+    /// Differs from `claim` in that it accepts an explicit `escrow_id` parameter
+    /// (used only for event emission — the single-vault storage is looked up by
+    /// the fixed storage keys, not by ID).  This prepares the API surface for the
+    /// planned multi-vault factory upgrade where each vault will have a unique ID.
+    ///
+    /// Guards (all must pass, checked in order)
+    /// ─────────────────────────────────────────
+    /// 1. Contract is initialized.
+    /// 2. Caller is the stored admin (`Unauthorized` if not).
+    /// 3. `KEY_TOTAL >= KEY_GOAL`  (`GoalNotMet` if not).
+    /// 4. `KEY_CLAIMED == false`   (`AlreadyDisbursed` if already true).
+    ///
+    /// No deadline check — goal-met is the sole release trigger.  This lets the
+    /// admin disburse funds the instant the goal is reached, even before the
+    /// natural campaign deadline, matching the spec.
+    ///
+    /// Emits: ("released", escrow_id, amount)
+    pub fn release_escrow_funds(
+        env:       Env,
+        admin:     Address,
+        escrow_id: u64,
+    ) -> Result<i128, Error> {
+        admin.require_auth();
+
+        if !env.storage().instance().has(&KEY_GOAL) {
+            return Err(Error::NotInitialized);
+        }
+
+        // ── Guard 1: caller must be the stored admin ─────────────────────────
+        let stored_admin: Address = env.storage().instance().get(&KEY_ADMIN).unwrap();
+        if admin != stored_admin {
+            return Err(Error::Unauthorized);
+        }
+
+        let goal:    i128 = env.storage().instance().get(&KEY_GOAL).unwrap();
+        let total:   i128 = env.storage().instance().get(&KEY_TOTAL).unwrap_or(0);
+        let claimed: bool = env.storage().instance().get(&KEY_CLAIMED).unwrap_or(false);
+
+        // ── Guard 2: goal must have been reached ─────────────────────────────
+        if total < goal {
+            return Err(Error::GoalNotMet);
+        }
+
+        // ── Guard 3: funds must not have already been disbursed ───────────────
+        if claimed {
+            return Err(Error::AlreadyDisbursed);
+        }
+
+        // Mark disbursed BEFORE the transfer (checks-effects-interactions pattern)
+        env.storage().instance().set(&KEY_CLAIMED, &true);
+
+        // Transfer accumulated balance to admin via the asset SAC
+        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let token_client = token::Client::new(&env, &asset);
+        token_client.transfer(&env.current_contract_address(), &admin, &total);
+
+        Self::bump_instance_ttl(&env);
+
+        // Emit ("released", escrow_id, amount) as specified
+        env.events().publish(
+            (symbol_short!("released"), escrow_id),
+            total,
+        );
+
+        log!(&env, "release_escrow_funds: escrow_id={}, admin={}, amount={}", escrow_id, admin, total);
+        Ok(total)
+    }
+
+    // ── claim_refund (Phase 2 / Task 2) ──────────────────────────────────────────
+
+    /// A contributor reclaims their pledged amount after a failed campaign.
+    ///
+    /// Accepts an explicit `escrow_id` for event emission (same rationale as
+    /// `release_escrow_funds`).
+    ///
+    /// Guards (all must pass, checked in order)
+    /// ─────────────────────────────────────────
+    /// 1. `contributor.require_auth()` — only the contributor can trigger their refund.
+    /// 2. Contract is initialized.
+    /// 3. Deadline has passed (`NothingToRefund` if not).
+    /// 4. Goal was NOT met (`NothingToRefund` if goal was reached — admin should claim).
+    /// 5. Contributor has a pledge record with `amount > 0` (`NothingToRefund` if not).
+    ///
+    /// Reentrancy protection
+    /// ──────────────────────
+    /// The contributor's stored `amount` is zeroed out in storage **before** the
+    /// token transfer is executed (checks-effects-interactions pattern).  A second
+    /// call will fail at guard 5 with `NothingToRefund`.
+    ///
+    /// Emits: ("refunded", escrow_id, contributor, amount)
+    pub fn claim_refund(
+        env:         Env,
+        escrow_id:   u64,
+        contributor: Address,
+    ) -> Result<i128, Error> {
+        contributor.require_auth();
+
+        if !env.storage().instance().has(&KEY_GOAL) {
+            return Err(Error::NotInitialized);
+        }
+
+        let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
+        let goal:     i128 = env.storage().instance().get(&KEY_GOAL).unwrap();
+        let total:    i128 = env.storage().instance().get(&KEY_TOTAL).unwrap_or(0);
+
+        // ── Guard 1: deadline must have passed ───────────────────────────────
+        if env.ledger().sequence() < deadline {
+            return Err(Error::NothingToRefund);
+        }
+
+        // ── Guard 2: goal must NOT have been reached ─────────────────────────
+        if total >= goal {
+            return Err(Error::NothingToRefund);
+        }
+
+        // ── Guard 3: contributor must have a positive pledge record ──────────
+        let record: Option<PledgeRecord> = env.storage().instance().get(&contributor);
+        let record = record.ok_or(Error::NothingToRefund)?;
+
+        if record.amount <= 0 {
+            return Err(Error::NothingToRefund);
+        }
+
+        let refund_amount = record.amount;
+
+        // ── Reentrancy guard: zero the record BEFORE transfer ────────────────
+        let zeroed = PledgeRecord {
+            pledger: contributor.clone(),
+            amount:  0,
+            ledger:  record.ledger,
+        };
+        env.storage().instance().set(&contributor, &zeroed);
+
+        // Reduce running total
+        let new_total = total - refund_amount;
+        env.storage().instance().set(&KEY_TOTAL, &new_total);
+
+        // Transfer pledged amount back to contributor via asset SAC
+        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let token_client = token::Client::new(&env, &asset);
+        token_client.transfer(&env.current_contract_address(), &contributor, &refund_amount);
+
+        Self::bump_instance_ttl(&env);
+
+        // Emit ("refunded", escrow_id, contributor, amount) as specified
+        env.events().publish(
+            (symbol_short!("refunded"), escrow_id, contributor.clone()),
+            refund_amount,
+        );
+
+        log!(&env, "claim_refund: escrow_id={}, contributor={}, amount={}", escrow_id, contributor, refund_amount);
+        Ok(refund_amount)
     }
 }
 
