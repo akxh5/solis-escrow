@@ -5,7 +5,19 @@
  * These mirror the PostgreSQL schema and on-chain contract state.
  */
 
-export type EscrowStatus = "ACTIVE" | "FUNDED" | "RELEASED" | "REFUNDED" | "EXPIRED" | "CANCELLED";
+export type EscrowStatus =
+  // Legacy / mock statuses (kept for backwards compat)
+  | "ACTIVE"
+  | "FUNDED"
+  | "RELEASED"
+  | "REFUNDED"
+  | "EXPIRED"
+  | "CANCELLED"
+  // On-chain dynamic statuses — returned by get_status() Soroban call
+  | "Active"
+  | "SuccessfulPendingRelease"
+  | "ExpiredRefundable"
+  | "Completed";
 export type AssetSymbol = "XLM" | "USDC";
 
 export interface Pledger {
@@ -64,24 +76,36 @@ export function getTagClass(tag: string): string {
 
 export function getStatusLabel(status: EscrowStatus): string {
   const labels: Record<EscrowStatus, string> = {
+    // Legacy
     ACTIVE:    "🟢 Active",
     FUNDED:    "💰 Funded",
     RELEASED:  "✅ Released",
     REFUNDED:  "↩️ Refunded",
     EXPIRED:   "⏰ Expired",
     CANCELLED: "❌ Cancelled",
+    // On-chain dynamic
+    Active:                   "🟢 Active",
+    SuccessfulPendingRelease: "💰 Goal Met",
+    ExpiredRefundable:        "⏰ Expired",
+    Completed:                "✅ Completed",
   };
   return labels[status] ?? status;
 }
 
 export function getStatusTagClass(status: EscrowStatus): string {
   const classes: Record<EscrowStatus, string> = {
+    // Legacy
     ACTIVE:    "tag-lime",
     FUNDED:    "tag-yellow",
     RELEASED:  "tag-cyan",
     REFUNDED:  "tag-white",
     EXPIRED:   "tag-pink",
     CANCELLED: "tag-black",
+    // On-chain dynamic
+    Active:                   "tag-lime",
+    SuccessfulPendingRelease: "tag-yellow",
+    ExpiredRefundable:        "tag-pink",
+    Completed:                "tag-cyan",
   };
   return classes[status] ?? "tag-white";
 }
