@@ -29,12 +29,18 @@ use soroban_sdk::{
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
-const KEY_ADMIN:    Symbol = symbol_short!("ADMIN");
-const KEY_GOAL:     Symbol = symbol_short!("GOAL");
-const KEY_DEADLINE: Symbol = symbol_short!("DEADLINE");
-const KEY_TOTAL:    Symbol = symbol_short!("TOTAL");
-const KEY_CLAIMED:  Symbol = symbol_short!("CLAIMED");
-const KEY_ASSET:    Symbol = symbol_short!("ASSET");
+#[contracttype]
+#[derive(Clone)]
+pub enum DataKey {
+    MasterList,
+    Admin(u64),
+    Goal(u64),
+    Deadline(u64),
+    Total(u64),
+    Claimed(u64),
+    Asset(u64),
+    Pledge(u64, Address),
+}
 
 // ─── Data types ───────────────────────────────────────────────────────────────
 
@@ -147,33 +153,7 @@ impl EscrowVault {
     ///
     /// `asset` is the Stellar Asset Contract (SAC) address for the token this
     /// vault will accept — either the Native XLM SAC or the USDC SAC.
-    pub fn initialize(
-        env:      Env,
-        admin:    Address,
-        goal:     i128,
-        deadline: u32,
-        asset:    Address,
-    ) -> Result<(), Error> {
-        admin.require_auth();
 
-        // Prevent double-initialization
-        if env.storage().instance().has(&KEY_GOAL) {
-            return Err(Error::AlreadyInitialized);
-        }
-
-        env.storage().instance().set(&KEY_ADMIN,    &admin);
-        env.storage().instance().set(&KEY_GOAL,     &goal);
-        env.storage().instance().set(&KEY_DEADLINE, &deadline);
-        env.storage().instance().set(&KEY_TOTAL,    &0_i128);
-        env.storage().instance().set(&KEY_CLAIMED,  &false);
-        env.storage().instance().set(&KEY_ASSET,    &asset);
-
-        // Bump TTL on init so the vault doesn't expire before the deadline
-        Self::bump_instance_ttl(&env);
-
-        log!(&env, "EscrowVault initialized: goal={}, deadline={}, asset={}", goal, deadline, asset);
-        Ok(())
-    }
 
     // ── pledge ──────────────────────────────────────────────────────────────────
 
@@ -184,23 +164,24 @@ impl EscrowVault {
     /// move `amount` stroops from `pledger` to the contract itself.
     pub fn pledge(
         env:     Env,
+        escrow_id: u64,
         pledger: Address,
         amount:  i128,
         asset:   Address,
     ) -> Result<(), Error> {
         pledger.require_auth();
 
-        if !env.storage().instance().has(&KEY_GOAL) {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
         // Validate the supplied asset matches the one configured at init-time
-        let configured_asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let configured_asset: Address = env.storage().instance().get(&DataKey::Asset(escrow_id)).unwrap();
         if asset != configured_asset {
             return Err(Error::AssetMismatch);
         }
 
-        let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
+        let deadline: u32 = env.storage().instance().get(&DataKey::Deadline(escrow_id)).unwrap();
         if env.ledger().sequence() >= deadline {
             return Err(Error::DeadlinePassed);
         }
@@ -209,8 +190,8 @@ impl EscrowVault {
             return Err(Error::InvalidPledgeAmount);
         }
 
-        let goal: i128  = env.storage().instance().get(&KEY_GOAL).unwrap();
-        let total: i128 = env.storage().instance().get(&KEY_TOTAL).unwrap();
+        let goal: i128  = env.storage().instance().get(&DataKey::Goal(escrow_id)).unwrap();
+        let total: i128 = env.storage().instance().get(&DataKey::Total(escrow_id)).unwrap();
         if total >= goal {
             return Err(Error::GoalAlreadyMet);
         }
@@ -222,7 +203,7 @@ impl EscrowVault {
         token_client.transfer(&pledger, &env.current_contract_address(), &amount);
 
         let new_total = total + amount;
-        env.storage().instance().set(&KEY_TOTAL, &new_total);
+        env.storage().instance().set(&DataKey::Total(escrow_id), &new_total);
 
         let record = PledgeRecord {
             pledger: pledger.clone(),
@@ -252,23 +233,23 @@ impl EscrowVault {
     ///
     /// Transfers the full accumulated balance from the contract to the admin
     /// using the stored asset SAC.
-    pub fn claim(env: Env, admin: Address) -> Result<i128, Error> {
+    pub fn claim(env: Env, escrow_id: u64, admin: Address) -> Result<i128, Error> {
         admin.require_auth();
 
-        if !env.storage().instance().has(&KEY_GOAL) {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
         // Verify admin identity
-        let stored_admin: Address = env.storage().instance().get(&KEY_ADMIN).unwrap();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin(escrow_id)).unwrap();
         if admin != stored_admin {
             return Err(Error::Unauthorized);
         }
 
-        let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
-        let goal: i128    = env.storage().instance().get(&KEY_GOAL).unwrap();
-        let total: i128   = env.storage().instance().get(&KEY_TOTAL).unwrap();
-        let claimed: bool = env.storage().instance().get(&KEY_CLAIMED).unwrap_or(false);
+        let deadline: u32 = env.storage().instance().get(&DataKey::Deadline(escrow_id)).unwrap();
+        let goal: i128    = env.storage().instance().get(&DataKey::Goal(escrow_id)).unwrap();
+        let total: i128   = env.storage().instance().get(&DataKey::Total(escrow_id)).unwrap();
+        let claimed: bool = env.storage().instance().get(&DataKey::Claimed(escrow_id)).unwrap_or(false);
 
         // Deadline must have passed
         if env.ledger().sequence() < deadline {
@@ -285,10 +266,10 @@ impl EscrowVault {
             return Err(Error::ClaimNotAllowed);
         }
 
-        env.storage().instance().set(&KEY_CLAIMED, &true);
+        env.storage().instance().set(&DataKey::Claimed(escrow_id), &true);
 
         // Transfer the full balance to the admin via the asset SAC
-        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let asset: Address = env.storage().instance().get(&DataKey::Asset(escrow_id)).unwrap();
         let token_client = token::Client::new(&env, &asset);
         token_client.transfer(&env.current_contract_address(), &admin, &total);
 
@@ -311,16 +292,16 @@ impl EscrowVault {
     /// Requirements: deadline has passed AND total < goal AND pledger has a record.
     ///
     /// Transfers the pledger's contribution back via the asset SAC.
-    pub fn refund(env: Env, pledger: Address) -> Result<i128, Error> {
+    pub fn refund(env: Env, escrow_id: u64, pledger: Address) -> Result<i128, Error> {
         pledger.require_auth();
 
-        if !env.storage().instance().has(&KEY_GOAL) {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
-        let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
-        let goal: i128    = env.storage().instance().get(&KEY_GOAL).unwrap();
-        let total: i128   = env.storage().instance().get(&KEY_TOTAL).unwrap();
+        let deadline: u32 = env.storage().instance().get(&DataKey::Deadline(escrow_id)).unwrap();
+        let goal: i128    = env.storage().instance().get(&DataKey::Goal(escrow_id)).unwrap();
+        let total: i128   = env.storage().instance().get(&DataKey::Total(escrow_id)).unwrap();
 
         // Deadline must have passed
         if env.ledger().sequence() < deadline {
@@ -352,10 +333,10 @@ impl EscrowVault {
 
         // Reduce the total
         let new_total = total - refund_amount;
-        env.storage().instance().set(&KEY_TOTAL, &new_total);
+        env.storage().instance().set(&DataKey::Total(escrow_id), &new_total);
 
         // Return funds to the pledger via the asset SAC
-        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let asset: Address = env.storage().instance().get(&DataKey::Asset(escrow_id)).unwrap();
         let token_client = token::Client::new(&env, &asset);
         token_client.transfer(&env.current_contract_address(), &pledger, &refund_amount);
 
@@ -379,14 +360,14 @@ impl EscrowVault {
     /// This is a *scaffold* for the Level 5 milestone-phase state machine.
     /// The full state-transition guard will be wired in a follow-up commit once
     /// the `LOCKED` storage key is introduced.
-    pub fn emit_lock(env: Env, admin: Address) -> Result<(), Error> {
+    pub fn emit_lock(env: Env, escrow_id: u64, admin: Address) -> Result<(), Error> {
         admin.require_auth();
 
-        if !env.storage().instance().has(&KEY_GOAL) {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
-        let stored_admin: Address = env.storage().instance().get(&KEY_ADMIN).unwrap();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin(escrow_id)).unwrap();
         if admin != stored_admin {
             return Err(Error::Unauthorized);
         }
@@ -404,19 +385,19 @@ impl EscrowVault {
     /// without meeting goal — refund window is now open. Callable by admin.
     ///
     /// This is a *scaffold* for the Level 5 milestone-phase state machine.
-    pub fn emit_unlock(env: Env, admin: Address) -> Result<(), Error> {
+    pub fn emit_unlock(env: Env, escrow_id: u64, admin: Address) -> Result<(), Error> {
         admin.require_auth();
 
-        if !env.storage().instance().has(&KEY_GOAL) {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
-        let stored_admin: Address = env.storage().instance().get(&KEY_ADMIN).unwrap();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin(escrow_id)).unwrap();
         if admin != stored_admin {
             return Err(Error::Unauthorized);
         }
 
-        let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
+        let deadline: u32 = env.storage().instance().get(&DataKey::Deadline(escrow_id)).unwrap();
         if env.ledger().sequence() < deadline {
             return Err(Error::ClaimNotAllowed); // deadline not yet passed
         }
@@ -451,35 +432,55 @@ impl EscrowVault {
         goal:     i128,
         deadline: u32,
         asset:    Address,
-    ) -> Result<(), Error> {
-        // Delegate to initialize — single source of truth for vault setup.
-        Self::initialize(env, admin, goal, deadline, asset)
+    ) -> Result<u64, Error> {
+        admin.require_auth();
+
+        let mut list: soroban_sdk::Vec<u64> = env.storage().instance().get(&DataKey::MasterList).unwrap_or_else(|| soroban_sdk::Vec::new(&env));
+        let escrow_id = list.len() as u64 + 1;
+        list.push_back(escrow_id);
+        env.storage().instance().set(&DataKey::MasterList, &list);
+
+        env.storage().instance().set(&DataKey::Admin(escrow_id),    &admin);
+        env.storage().instance().set(&DataKey::Goal(escrow_id),     &goal);
+        env.storage().instance().set(&DataKey::Deadline(escrow_id), &deadline);
+        env.storage().instance().set(&DataKey::Total(escrow_id),    &0_i128);
+        env.storage().instance().set(&DataKey::Claimed(escrow_id),  &false);
+        env.storage().instance().set(&DataKey::Asset(escrow_id),    &asset);
+
+        Self::bump_instance_ttl(&env);
+
+        log!(&env, "Escrow {} created: goal={}, deadline={}, asset={}", escrow_id, goal, deadline, asset);
+        Ok(escrow_id)
+    }
+
+    pub fn get_all_escrows(env: Env) -> soroban_sdk::Vec<u64> {
+        env.storage().instance().get(&DataKey::MasterList).unwrap_or_else(|| soroban_sdk::Vec::new(&env))
     }
 
     // ── read-only getters ────────────────────────────────────────────────────────
 
-    pub fn get_total(env: Env) -> i128 {
-        env.storage().instance().get(&KEY_TOTAL).unwrap_or(0)
+    pub fn get_total(env: Env, escrow_id: u64) -> i128 {
+        env.storage().instance().get(&DataKey::Total(escrow_id)).unwrap_or(0)
     }
 
-    pub fn get_goal(env: Env) -> Result<i128, Error> {
-        env.storage().instance().get(&KEY_GOAL).ok_or(Error::NotInitialized)
+    pub fn get_goal(env: Env, escrow_id: u64) -> Result<i128, Error> {
+        env.storage().instance().get(&DataKey::Goal(escrow_id)).ok_or(Error::NotInitialized)
     }
 
-    pub fn get_deadline(env: Env) -> Result<u32, Error> {
-        env.storage().instance().get(&KEY_DEADLINE).ok_or(Error::NotInitialized)
+    pub fn get_deadline(env: Env, escrow_id: u64) -> Result<u32, Error> {
+        env.storage().instance().get(&DataKey::Deadline(escrow_id)).ok_or(Error::NotInitialized)
     }
 
-    pub fn get_asset(env: Env) -> Result<Address, Error> {
-        env.storage().instance().get(&KEY_ASSET).ok_or(Error::NotInitialized)
+    pub fn get_asset(env: Env, escrow_id: u64) -> Result<Address, Error> {
+        env.storage().instance().get(&DataKey::Asset(escrow_id)).ok_or(Error::NotInitialized)
     }
 
-    pub fn get_pledge(env: Env, pledger: Address) -> Option<PledgeRecord> {
+    pub fn get_pledge(env: Env, escrow_id: u64, pledger: Address) -> Option<PledgeRecord> {
         env.storage().instance().get(&pledger)
     }
 
-    pub fn is_claimed(env: Env) -> bool {
-        env.storage().instance().get(&KEY_CLAIMED).unwrap_or(false)
+    pub fn is_claimed(env: Env, escrow_id: u64) -> bool {
+        env.storage().instance().get(&DataKey::Claimed(escrow_id)).unwrap_or(false)
     }
 
     // ── get_status (Task 1) ─────────────────────────────────────────────────────
@@ -498,20 +499,20 @@ impl EscrowVault {
     /// deadline     passed & total <  goal  → ExpiredRefundable
     /// deadline     passed & total >= goal  → SuccessfulPendingRelease
     /// claimed == true (any state above)    → Completed
-    pub fn get_status(env: Env) -> Result<EscrowStatus, Error> {
-        if !env.storage().instance().has(&KEY_GOAL) {
+    pub fn get_status(env: Env, escrow_id: u64) -> Result<EscrowStatus, Error> {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
         // Check claimed first — it supersedes all other conditions.
-        let claimed: bool = env.storage().instance().get(&KEY_CLAIMED).unwrap_or(false);
+        let claimed: bool = env.storage().instance().get(&DataKey::Claimed(escrow_id)).unwrap_or(false);
         if claimed {
             return Ok(EscrowStatus::Completed);
         }
 
-        let goal:     i128 = env.storage().instance().get(&KEY_GOAL).unwrap();
-        let total:    i128 = env.storage().instance().get(&KEY_TOTAL).unwrap_or(0);
-        let deadline: u32  = env.storage().instance().get(&KEY_DEADLINE).unwrap();
+        let goal:     i128 = env.storage().instance().get(&DataKey::Goal(escrow_id)).unwrap();
+        let total:    i128 = env.storage().instance().get(&DataKey::Total(escrow_id)).unwrap_or(0);
+        let deadline: u32  = env.storage().instance().get(&DataKey::Deadline(escrow_id)).unwrap();
         let now:      u32  = env.ledger().sequence();
 
         let past_deadline = now >= deadline;
@@ -555,19 +556,19 @@ impl EscrowVault {
     ) -> Result<i128, Error> {
         admin.require_auth();
 
-        if !env.storage().instance().has(&KEY_GOAL) {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
         // ── Guard 1: caller must be the stored admin ─────────────────────────
-        let stored_admin: Address = env.storage().instance().get(&KEY_ADMIN).unwrap();
+        let stored_admin: Address = env.storage().instance().get(&DataKey::Admin(escrow_id)).unwrap();
         if admin != stored_admin {
             return Err(Error::Unauthorized);
         }
 
-        let goal:    i128 = env.storage().instance().get(&KEY_GOAL).unwrap();
-        let total:   i128 = env.storage().instance().get(&KEY_TOTAL).unwrap_or(0);
-        let claimed: bool = env.storage().instance().get(&KEY_CLAIMED).unwrap_or(false);
+        let goal:    i128 = env.storage().instance().get(&DataKey::Goal(escrow_id)).unwrap();
+        let total:   i128 = env.storage().instance().get(&DataKey::Total(escrow_id)).unwrap_or(0);
+        let claimed: bool = env.storage().instance().get(&DataKey::Claimed(escrow_id)).unwrap_or(false);
 
         // ── Guard 2: goal must have been reached ─────────────────────────────
         if total < goal {
@@ -580,10 +581,10 @@ impl EscrowVault {
         }
 
         // Mark disbursed BEFORE the transfer (checks-effects-interactions pattern)
-        env.storage().instance().set(&KEY_CLAIMED, &true);
+        env.storage().instance().set(&DataKey::Claimed(escrow_id), &true);
 
         // Transfer accumulated balance to admin via the asset SAC
-        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let asset: Address = env.storage().instance().get(&DataKey::Asset(escrow_id)).unwrap();
         let token_client = token::Client::new(&env, &asset);
         token_client.transfer(&env.current_contract_address(), &admin, &total);
 
@@ -628,13 +629,13 @@ impl EscrowVault {
     ) -> Result<i128, Error> {
         contributor.require_auth();
 
-        if !env.storage().instance().has(&KEY_GOAL) {
+        if !env.storage().instance().has(&DataKey::Goal(escrow_id)) {
             return Err(Error::NotInitialized);
         }
 
-        let deadline: u32 = env.storage().instance().get(&KEY_DEADLINE).unwrap();
-        let goal:     i128 = env.storage().instance().get(&KEY_GOAL).unwrap();
-        let total:    i128 = env.storage().instance().get(&KEY_TOTAL).unwrap_or(0);
+        let deadline: u32 = env.storage().instance().get(&DataKey::Deadline(escrow_id)).unwrap();
+        let goal:     i128 = env.storage().instance().get(&DataKey::Goal(escrow_id)).unwrap();
+        let total:    i128 = env.storage().instance().get(&DataKey::Total(escrow_id)).unwrap_or(0);
 
         // ── Guard 1: deadline must have passed ───────────────────────────────
         if env.ledger().sequence() < deadline {
@@ -666,10 +667,10 @@ impl EscrowVault {
 
         // Reduce running total
         let new_total = total - refund_amount;
-        env.storage().instance().set(&KEY_TOTAL, &new_total);
+        env.storage().instance().set(&DataKey::Total(escrow_id), &new_total);
 
         // Transfer pledged amount back to contributor via asset SAC
-        let asset: Address = env.storage().instance().get(&KEY_ASSET).unwrap();
+        let asset: Address = env.storage().instance().get(&DataKey::Asset(escrow_id)).unwrap();
         let token_client = token::Client::new(&env, &asset);
         token_client.transfer(&env.current_contract_address(), &contributor, &refund_amount);
 

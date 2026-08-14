@@ -44,6 +44,7 @@ const ExternalLinkIcon = () => (
 export default function CreateEscrowModal({ isOpen, onClose }: Props) {
   const { status, publicKey, connect } = useWallet();
   const { showToast } = useToast();
+  const { refreshEscrows } = useEscrows();
 
   const [title, setTitle] = useState("");
   const [goal, setGoal] = useState("");
@@ -91,6 +92,9 @@ export default function CreateEscrowModal({ isOpen, onClose }: Props) {
         explorerUrl: result.explorerUrl,
         duration: 7000,
       });
+
+      // Refetch campaigns so the new one appears immediately
+      await refreshEscrows();
 
     } catch (err: unknown) {
       setTxStep("idle");

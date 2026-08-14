@@ -655,15 +655,14 @@ export function validatePledgeAmount(
 }
 
 // ─── Live Escrow State Fetcher ────────────────────────────────────────────────
-export async function fetchContractEscrowState(contractId: string): Promise<{ goalStr: string; totalStr: string }> {
+export async function fetchContractEscrowState(contractId: string, escrowId: number): Promise<{ goalStr: string; totalStr: string }> {
   const rpc = getRpcServer();
   const contract = new Contract(contractId);
-  // We use a known valid testnet account just for constructing the simulation envelope
   const source = new Account("GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5", "0");
 
-  async function simulateRead(method: string) {
+  async function simulateRead(method: string, args: xdr.ScVal[] = []) {
     const tx = new TransactionBuilder(source, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
-      .addOperation(contract.call(method))
+      .addOperation(contract.call(method, ...args))
       .setTimeout(30)
       .build();
     
@@ -675,10 +674,69 @@ export async function fetchContractEscrowState(contractId: string): Promise<{ go
     return scValToNative(sim.result.retval);
   }
 
-  const goal = await simulateRead("get_goal");
-  const total = await simulateRead("get_total");
+  const escrowIdVal = nativeToScVal(escrowId, { type: "u64" });
+  const goal = await simulateRead("get_goal", [escrowIdVal]);
+  const total = await simulateRead("get_total", [escrowIdVal]);
 
   return { goalStr: goal.toString(), totalStr: total.toString() };
+}
+
+export async function fetchAllEscrows(): Promise<any[]> {
+  const rpc = getRpcServer();
+  const contract = new Contract(ESCROW_CONTRACT_ID);
+  const source = new Account("GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5", "0");
+
+  async function simulateRead(method: string, args: any[] = []) {
+    const tx = new TransactionBuilder(source, { fee: BASE_FEE, networkPassphrase: Networks.TESTNET })
+      .addOperation(contract.call(method, ...args))
+      .setTimeout(30)
+      .build();
+    
+    const sim = await rpc.simulateTransaction(tx);
+    if (SorobanRpc.Api.isSimulationError(sim)) {
+       throw new Error(typeof sim.error === "string" ? sim.error : JSON.stringify(sim.error));
+    }
+    if (!sim.result) return null;
+    return scValToNative(sim.result.retval);
+  }
+
+  const escrowIds: bigint[] = await simulateRead("get_all_escrows");
+  if (!escrowIds) return [];
+
+  const escrows = [];
+  for (const id of escrowIds) {
+    const idVal = nativeToScVal(id, { type: "u64" });
+    const goal = await simulateRead("get_goal", [idVal]);
+    const total = await simulateRead("get_total", [idVal]);
+    const deadline = await simulateRead("get_deadline", [idVal]);
+    const asset = await simulateRead("get_asset", [idVal]);
+    const statusIdx = await simulateRead("get_status", [idVal]);
+    // Map status enum index (0=Active, 1=SuccessfulPendingRelease, 2=ExpiredRefundable, 3=Completed)
+    let statusStr = "ACTIVE";
+    if (statusIdx?.tag === "SuccessfulPendingRelease") statusStr = "FUNDED";
+    else if (statusIdx?.tag === "ExpiredRefundable") statusStr = "EXPIRED";
+    else if (statusIdx?.tag === "Completed") statusStr = "RELEASED";
+
+    escrows.push({
+      id: id.toString(),
+      contractId: ESCROW_CONTRACT_ID,
+      creatorWallet: "Unknown", // Needs admin address, but we don't have get_admin
+      title: `Escrow Campaign #${id}`,
+      description: "Dynamically fetched from Soroban.",
+      tags: ["Soroban", "DeFi"],
+      goalAmount: Number(goal) / 10000000,
+      assetSymbol: asset === USDC_CONTRACT_ID ? "USDC" : "XLM",
+      pledgedTotal: Number(total) / 10000000,
+      pledgerCount: 0,
+      fundingPct: Math.min(100, (Number(total) / Number(goal)) * 100),
+      status: statusStr,
+      deadlineAt: new Date(Date.now() + (Number(deadline) - 10000) * 5000).toISOString(), // Mocking deadline date via approx
+      createdAt: new Date().toISOString(),
+      accentColor: "yellow",
+      recentPledgers: []
+    });
+  }
+  return escrows;
 }
 
 // ─── Event Polling ────────────────────────────────────────────────────────────

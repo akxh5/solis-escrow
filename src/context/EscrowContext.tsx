@@ -27,8 +27,7 @@ import {
   type ReactNode,
 } from "react";
 import type { EscrowListing, AssetSymbol, EscrowStatus } from "@/lib/escrowTypes";
-import { fetchEscrowListings } from "@/lib/mockEscrows";
-import { fetchContractEscrowState, ESCROW_CONTRACT_ID, getContractIdStatus } from "@/lib/stellar";
+import { fetchContractEscrowState, ESCROW_CONTRACT_ID, getContractIdStatus, fetchAllEscrows } from "@/lib/stellar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -63,36 +62,8 @@ export function EscrowProvider({ children }: { children: ReactNode }) {
 
     try {
       // Level 5: replace with `await (await fetch("/api/escrows")).json()`
-      const data = await fetchEscrowListings();
-
-      // Override mock data with true live on-chain state for ALL valid contracts
-      const liveData = await Promise.all(
-        data.map(async (escrow) => {
-          if (getContractIdStatus(escrow.contractId) === "valid") {
-            try {
-              const { goalStr, totalStr } = await fetchContractEscrowState(escrow.contractId);
-              // Values are in stroops (10^-7), so divide by 10,000,000 to get XLM
-              const goalAmount = Number(goalStr) / 10_000_000;
-              const pledgedTotal = Number(totalStr) / 10_000_000;
-              const fundingPct = Math.min((pledgedTotal / goalAmount) * 100, 100);
-              
-              return {
-                ...escrow,
-                goalAmount,
-                pledgedTotal,
-                fundingPct,
-                status: fundingPct >= 100 ? "FUNDED" : escrow.status,
-              };
-            } catch (err) {
-              console.error(`Failed to fetch live contract state for ${escrow.contractId}:`, err);
-              // Gracefully degrade to mock data so UI layout is preserved
-              return { ...escrow, _liveFetchFailed: true };
-            }
-          }
-          // If contract ID is invalid entirely, degrade to mock
-          return { ...escrow, _liveFetchFailed: true };
-        })
-      );
+      // Actually, we use fetchAllEscrows to query the Soroban Master List.
+      const liveData = await fetchAllEscrows();
 
       setEscrows(liveData);
     } catch {

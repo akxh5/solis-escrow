@@ -47,7 +47,7 @@ fn setup() -> (Env, Address, EscrowVaultClient<'static>, Address, TokenClient<'s
 /// Initialize with a deadline 1000 ledgers from now, GOAL stroops, and the asset address.
 fn init(env: &Env, admin: &Address, client: &EscrowVaultClient, asset: &Address) -> u32 {
     let deadline = env.ledger().sequence() + 1_000;
-    client.initialize(admin, &GOAL, &deadline, asset);
+    client.create_escrow(admin, &GOAL, &deadline, asset);
     deadline
 }
 
@@ -66,26 +66,32 @@ fn test_initialize_success() {
     let (env, admin, client, asset, _token) = setup();
     let deadline = env.ledger().sequence() + 500;
 
-    client.initialize(&admin, &GOAL, &deadline, &asset);
+    client.create_escrow(&admin, &GOAL, &deadline, &asset);
 
-    assert_eq!(client.get_goal(), GOAL);
-    assert_eq!(client.get_deadline(), deadline);
-    assert_eq!(client.get_total(), 0);
-    assert_eq!(client.get_asset(), asset);
-    assert!(!client.is_claimed());
+    assert_eq!(client.get_goal(&1, ), GOAL);
+    assert_eq!(client.get_deadline(&1, ), deadline);
+    assert_eq!(client.get_total(&1, ), 0);
+    assert_eq!(client.get_asset(&1, ), asset);
+    assert!(!client.is_claimed(&1, ));
 }
 
 // ─── Test 2: Double initialization is rejected ────────────────────────────────
 
 #[test]
 fn test_initialize_only_once() {
-    let (env, admin, client, asset, _token) = setup();
-    let deadline = env.ledger().sequence() + 500;
+    let env = Env::default();
+    env.mock_all_auths();
 
-    client.initialize(&admin, &GOAL, &deadline, &asset);
+    let admin = Address::generate(&env);
+    let asset = Address::generate(&env);
+    let contract_id = env.register_contract(None, EscrowVault);
+    let client = EscrowVaultClient::new(&env, &contract_id);
 
-    let result = client.try_initialize(&admin, &GOAL, &deadline, &asset);
-    assert_eq!(result, Err(Ok(Error::AlreadyInitialized)));
+    client.create_escrow(&admin, &50_000_000_000, &500, &asset);
+
+    // Initializing again should create a second escrow with ID 2
+    let result = client.try_create_escrow(&admin, &50_000_000_000, &500, &asset);
+    assert_eq!(result, Ok(Ok(2)));
 }
 
 // ─── Test 3: Single valid pledge ──────────────────────────────────────────────
@@ -98,10 +104,10 @@ fn test_single_valid_pledge() {
     let pledger = Address::generate(&env);
     let amount  = 50 * XLM;
     fund_pledger(&env, &asset, &pledger, amount);
-    client.pledge(&pledger, &amount, &asset);
+    client.pledge(&1, &pledger, &amount, &asset);
 
-    assert_eq!(client.get_total(), amount);
-    let record = client.get_pledge(&pledger).expect("record should exist");
+    assert_eq!(client.get_total(&1, ), amount);
+    let record = client.get_pledge(&1, &pledger).expect("record should exist");
     assert_eq!(record.amount, amount);
     assert_eq!(record.pledger, pledger);
 }
@@ -119,10 +125,10 @@ fn test_accumulated_pledges() {
     for &amount in &pledges {
         let pledger = Address::generate(&env);
         fund_pledger(&env, &asset, &pledger, amount);
-        client.pledge(&pledger, &amount, &asset);
+        client.pledge(&1, &pledger, &amount, &asset);
     }
 
-    assert_eq!(client.get_total(), expected_total);
+    assert_eq!(client.get_total(&1, ), expected_total);
 }
 
 // ─── Test 5: Pledge after deadline is rejected ────────────────────────────────
@@ -136,7 +142,7 @@ fn test_error_pledge_past_deadline() {
 
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, 10 * XLM);
-    let result = client.try_pledge(&pledger, &(10 * XLM), &asset);
+    let result = client.try_pledge(&1, &pledger, &(10 * XLM), &asset);
     assert_eq!(result, Err(Ok(Error::DeadlinePassed)));
 }
 
@@ -148,7 +154,7 @@ fn test_error_pledge_zero_amount() {
     init(&env, &admin, &client, &asset);
 
     let pledger = Address::generate(&env);
-    let result  = client.try_pledge(&pledger, &0_i128, &asset);
+    let result  = client.try_pledge(&1, &pledger, &0_i128, &asset);
     assert_eq!(result, Err(Ok(Error::InvalidPledgeAmount)));
 }
 
@@ -160,7 +166,7 @@ fn test_error_pledge_negative_amount() {
     init(&env, &admin, &client, &asset);
 
     let pledger = Address::generate(&env);
-    let result  = client.try_pledge(&pledger, &(-1 * XLM), &asset);
+    let result  = client.try_pledge(&1, &pledger, &(-1 * XLM), &asset);
     assert_eq!(result, Err(Ok(Error::InvalidPledgeAmount)));
 }
 
@@ -173,12 +179,12 @@ fn test_error_pledge_goal_already_met() {
 
     let big_pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &big_pledger, GOAL);
-    client.pledge(&big_pledger, &GOAL, &asset);
-    assert_eq!(client.get_total(), GOAL);
+    client.pledge(&1, &big_pledger, &GOAL, &asset);
+    assert_eq!(client.get_total(&1, ), GOAL);
 
     let late_pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &late_pledger, XLM);
-    let result = client.try_pledge(&late_pledger, &XLM, &asset);
+    let result = client.try_pledge(&1, &late_pledger, &XLM, &asset);
     assert_eq!(result, Err(Ok(Error::GoalAlreadyMet)));
 }
 
@@ -193,7 +199,7 @@ fn test_error_asset_mismatch() {
     let wrong_asset = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, 50 * XLM);
 
-    let result = client.try_pledge(&pledger, &(50 * XLM), &wrong_asset);
+    let result = client.try_pledge(&1, &pledger, &(50 * XLM), &wrong_asset);
     assert_eq!(result, Err(Ok(Error::AssetMismatch)));
 }
 
@@ -206,13 +212,13 @@ fn test_claim_success() {
 
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, GOAL);
-    client.pledge(&pledger, &GOAL, &asset);
+    client.pledge(&1, &pledger, &GOAL, &asset);
 
     env.ledger().set_sequence_number(deadline + 1);
 
-    let claimed = client.claim(&admin);
+    let claimed = client.claim(&1, &admin);
     assert_eq!(claimed, GOAL);
-    assert!(client.is_claimed());
+    assert!(client.is_claimed(&1, ));
     assert_eq!(token.balance(&admin), 100_000 * XLM + GOAL);
 }
 
@@ -225,9 +231,9 @@ fn test_error_claim_before_deadline() {
 
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, GOAL);
-    client.pledge(&pledger, &GOAL, &asset);
+    client.pledge(&1, &pledger, &GOAL, &asset);
 
-    let result = client.try_claim(&admin);
+    let result = client.try_claim(&1, &admin);
     assert_eq!(result, Err(Ok(Error::ClaimNotAllowed)));
 }
 
@@ -240,11 +246,11 @@ fn test_error_claim_goal_not_reached() {
 
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, 100 * XLM);
-    client.pledge(&pledger, &(100 * XLM), &asset);
+    client.pledge(&1, &pledger, &(100 * XLM), &asset);
 
     env.ledger().set_sequence_number(deadline + 1);
 
-    let result = client.try_claim(&admin);
+    let result = client.try_claim(&1, &admin);
     assert_eq!(result, Err(Ok(Error::ClaimNotAllowed)));
 }
 
@@ -262,13 +268,13 @@ fn test_refund_disbursal() {
 
     fund_pledger(&env, &asset, &alice, alice_amount);
     fund_pledger(&env, &asset, &bob,   bob_amount);
-    client.pledge(&alice, &alice_amount, &asset);
-    client.pledge(&bob,   &bob_amount,   &asset);
+    client.pledge(&1, &alice, &alice_amount, &asset);
+    client.pledge(&1, &bob,   &bob_amount,   &asset);
 
     env.ledger().set_sequence_number(deadline + 1);
 
-    let alice_refund = client.refund(&alice);
-    let bob_refund   = client.refund(&bob);
+    let alice_refund = client.refund(&1, &alice);
+    let bob_refund   = client.refund(&1, &bob);
 
     assert_eq!(alice_refund, alice_amount);
     assert_eq!(bob_refund,   bob_amount);
@@ -276,7 +282,7 @@ fn test_refund_disbursal() {
     assert_eq!(token.balance(&bob),   bob_amount);
 
     // Double refund is blocked
-    let double = client.try_refund(&alice);
+    let double = client.try_refund(&1, &alice);
     assert_eq!(double, Err(Ok(Error::NothingToRefund)));
 }
 
@@ -289,11 +295,11 @@ fn test_error_refund_goal_reached() {
 
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, GOAL);
-    client.pledge(&pledger, &GOAL, &asset);
+    client.pledge(&1, &pledger, &GOAL, &asset);
 
     env.ledger().set_sequence_number(deadline + 1);
 
-    let result = client.try_refund(&pledger);
+    let result = client.try_refund(&1, &pledger);
     assert_eq!(result, Err(Ok(Error::NothingToRefund)));
 }
 
@@ -305,7 +311,7 @@ fn test_error_pledge_zero_amount_after_refund() {
     let (env, admin, client, asset, _token) = setup();
     init(&env, &admin, &client, &asset);
     let pledger = Address::generate(&env);
-    let result  = client.try_pledge(&pledger, &0_i128, &asset);
+    let result  = client.try_pledge(&1, &pledger, &0_i128, &asset);
     assert_eq!(result, Err(Ok(Error::InvalidPledgeAmount)));
 }
 
@@ -321,18 +327,18 @@ fn test_release_escrow_funds_success() {
     // Fill the entire goal (no deadline requirement for release_escrow_funds)
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, GOAL);
-    client.pledge(&pledger, &GOAL, &asset);
+    client.pledge(&1, &pledger, &GOAL, &asset);
 
-    assert_eq!(client.get_total(), GOAL);
+    assert_eq!(client.get_total(&1, ), GOAL);
 
     let escrow_id: u64 = 1;
-    let released = client.release_escrow_funds(&admin, &escrow_id);
+    let released = client.release_escrow_funds(&admin, &1);
 
     // Returns the full disbursed amount
     assert_eq!(released, GOAL);
 
     // State is marked as disbursed
-    assert!(client.is_claimed());
+    assert!(client.is_claimed(&1, ));
 
     // Admin receives the funds on top of their starting balance
     assert_eq!(token.balance(&admin), 100_000 * XLM + GOAL);
@@ -347,12 +353,12 @@ fn test_release_escrow_funds_double_disbursal_rejected() {
 
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, GOAL);
-    client.pledge(&pledger, &GOAL, &asset);
+    client.pledge(&1, &pledger, &GOAL, &asset);
 
     let escrow_id: u64 = 1;
-    client.release_escrow_funds(&admin, &escrow_id); // first succeeds
+    client.release_escrow_funds(&admin, &1); // first succeeds
 
-    let result = client.try_release_escrow_funds(&admin, &escrow_id);
+    let result = client.try_release_escrow_funds(&admin, &1);
     assert_eq!(result, Err(Ok(Error::AlreadyDisbursed)));
 }
 
@@ -366,10 +372,10 @@ fn test_release_escrow_funds_goal_not_met_rejected() {
     // Partial pledge only — goal is NOT reached
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, 100 * XLM);
-    client.pledge(&pledger, &(100 * XLM), &asset);
+    client.pledge(&1, &pledger, &(100 * XLM), &asset);
 
     let escrow_id: u64 = 1;
-    let result = client.try_release_escrow_funds(&admin, &escrow_id);
+    let result = client.try_release_escrow_funds(&admin, &1);
     assert_eq!(result, Err(Ok(Error::GoalNotMet)));
 }
 
@@ -382,11 +388,11 @@ fn test_release_escrow_funds_unauthorized() {
 
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, GOAL);
-    client.pledge(&pledger, &GOAL, &asset);
+    client.pledge(&1, &pledger, &GOAL, &asset);
 
     let impostor   = Address::generate(&env);
     let escrow_id: u64 = 1;
-    let result = client.try_release_escrow_funds(&impostor, &escrow_id);
+    let result = client.try_release_escrow_funds(&impostor, &1);
     assert_eq!(result, Err(Ok(Error::Unauthorized)));
 }
 
@@ -401,13 +407,13 @@ fn test_claim_refund_success() {
     let alice        = Address::generate(&env);
     let alice_amount = 300 * XLM;
     fund_pledger(&env, &asset, &alice, alice_amount);
-    client.pledge(&alice, &alice_amount, &asset);
+    client.pledge(&1, &alice, &alice_amount, &asset);
 
     // Deadline passes
     env.ledger().set_sequence_number(deadline + 1);
 
     let escrow_id: u64 = 1;
-    let refunded = client.claim_refund(&escrow_id, &alice);
+    let refunded = client.claim_refund(&1, &alice);
 
     // Exact pledged amount is returned
     assert_eq!(refunded, alice_amount);
@@ -416,7 +422,7 @@ fn test_claim_refund_success() {
     assert_eq!(token.balance(&alice), alice_amount);
 
     // Reentrancy guard: second call is blocked
-    let double = client.try_claim_refund(&escrow_id, &alice);
+    let double = client.try_claim_refund(&1, &alice);
     assert_eq!(double, Err(Ok(Error::NothingToRefund)));
 }
 
@@ -430,15 +436,15 @@ fn test_claim_refund_double_refund_rejected() {
     let alice        = Address::generate(&env);
     let alice_amount = 150 * XLM;
     fund_pledger(&env, &asset, &alice, alice_amount);
-    client.pledge(&alice, &alice_amount, &asset);
+    client.pledge(&1, &alice, &alice_amount, &asset);
 
     env.ledger().set_sequence_number(deadline + 1);
 
     let escrow_id: u64 = 42;
-    client.claim_refund(&escrow_id, &alice); // first succeeds
+    client.claim_refund(&1, &alice); // first succeeds
 
     // Second call must fail — record was zeroed before the first transfer
-    let result = client.try_claim_refund(&escrow_id, &alice);
+    let result = client.try_claim_refund(&1, &alice);
     assert_eq!(result, Err(Ok(Error::NothingToRefund)));
 }
 
@@ -452,13 +458,13 @@ fn test_claim_refund_rejected_when_goal_met() {
     // Fill the entire goal
     let pledger = Address::generate(&env);
     fund_pledger(&env, &asset, &pledger, GOAL);
-    client.pledge(&pledger, &GOAL, &asset);
+    client.pledge(&1, &pledger, &GOAL, &asset);
 
     env.ledger().set_sequence_number(deadline + 1);
 
     let escrow_id: u64 = 1;
     // Refund must be denied — goal was reached, admin should use release_escrow_funds
-    let result = client.try_claim_refund(&escrow_id, &pledger);
+    let result = client.try_claim_refund(&1, &pledger);
     assert_eq!(result, Err(Ok(Error::NothingToRefund)));
 }
 
@@ -471,10 +477,10 @@ fn test_claim_refund_before_deadline_rejected() {
 
     let alice = Address::generate(&env);
     fund_pledger(&env, &asset, &alice, 50 * XLM);
-    client.pledge(&alice, &(50 * XLM), &asset);
+    client.pledge(&1, &alice, &(50 * XLM), &asset);
 
     // Do NOT advance ledger — deadline has NOT passed
     let escrow_id: u64 = 5;
-    let result = client.try_claim_refund(&escrow_id, &alice);
+    let result = client.try_claim_refund(&1, &alice);
     assert_eq!(result, Err(Ok(Error::NothingToRefund)));
 }
