@@ -16,6 +16,7 @@ import type { EscrowStatus } from "@/lib/escrowTypes";
 import { useEscrows } from "@/context/EscrowContext";
 import EscrowCard from "./EscrowCard";
 import { EscrowFeedSkeleton } from "./EscrowSkeleton";
+import CreateEscrowModal from "./CreateEscrowModal";
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ export default function EscrowExplorer() {
   const [assetFilter,  setAssetFilter]  = useState<"ALL" | "XLM" | "USDC">("ALL");
   const [searchQuery,  setSearchQuery]  = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // ── Refresh handler ─────────────────────────────────────────────────────
   const handleRefresh = useCallback(async () => {
@@ -179,6 +181,26 @@ export default function EscrowExplorer() {
           ))}
         </div>
       )}
+
+      {/* ── Create Escrow Button ── */}
+      <div style={{ marginBottom: 24 }}>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="btn-brutal"
+          style={{
+            width: "100%",
+            background: "#0A0A0A",
+            color: "#FFE600",
+            padding: "16px",
+            fontSize: "1.2rem",
+            fontWeight: 800,
+            justifyContent: "center",
+          }}
+        >
+          ➕ CREATE NEW ESCROW
+        </button>
+      </div>
+      <CreateEscrowModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} />
 
       {/* ── Controls ── */}
       <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>

@@ -479,6 +479,135 @@ export async function pledgeToEscrow(
   };
 }
 
+// ─── Create Escrow Invocation ─────────────────────────────────────────────────
+
+export async function createNewEscrow(
+  adminPublicKey: string,
+  goalAmountStr: string,
+  deadlineUnixSec: number,
+  selectedAsset: AssetType = "XLM"
+): Promise<PledgeResult> {
+  const rpc = getRpcServer();
+  const horizon = getHorizonServer();
+
+  let adminAccount: Horizon.AccountResponse;
+  try {
+    adminAccount = await horizon.loadAccount(adminPublicKey);
+  } catch {
+    throw new Error(
+      "Failed to load your account from Horizon. Make sure your Testnet wallet is funded."
+    );
+  }
+
+  const amountFloat = parseFloat(goalAmountStr);
+  if (isNaN(amountFloat) || amountFloat <= 0) throw new Error("Invalid goal amount.");
+  const amountStroops = BigInt(Math.round(amountFloat * 10_000_000));
+  
+  // Convert deadline Unix to approx Stellar Ledger (1 ledger ~ 5-6 seconds, but we need u32 sequence).
+  // Actually, Soroban deadline in our contract is a ledger sequence, not a timestamp!
+  // Wait, let's check the contract. "deadline — Stellar ledger sequence number".
+  // The user asked for "deadline (Unix timestamp)" but the contract says "deadline: u32".
+  // Let's get the current ledger and add (deadlineUnixSec - now) / 5.
+  
+  const currentLedgerRes = await rpc.getLatestLedger();
+  const currentLedger = currentLedgerRes.sequence;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const diffSec = Math.max(0, deadlineUnixSec - nowSec);
+  const addLedgers = Math.ceil(diffSec / 5);
+  const targetLedger = currentLedger + addLedgers;
+
+  const adminScVal = new Address(adminPublicKey).toScVal();
+  const goalScVal = nativeToScVal(amountStroops, { type: "i128" });
+  const deadlineScVal = nativeToScVal(targetLedger, { type: "u32" });
+  const assetAddress = selectedAsset === "USDC" ? USDC_CONTRACT_ID : XLM_SAC_CONTRACT_ID;
+  const assetScVal = new Address(assetAddress).toScVal();
+
+  const escrowContract = new Contract(ESCROW_CONTRACT_ID);
+  
+  const unsignedTx = new TransactionBuilder(adminAccount, {
+    fee: BASE_FEE,
+    networkPassphrase: Networks.TESTNET,
+  })
+    .addOperation(
+      escrowContract.call("create_escrow", adminScVal, goalScVal, deadlineScVal, assetScVal)
+    )
+    .setTimeout(180)
+    .build();
+
+  let preparedTx: Transaction | FeeBumpTransaction;
+  try {
+    const simulation = await rpc.simulateTransaction(unsignedTx);
+    if (SorobanRpc.Api.isSimulationError(simulation)) {
+      const simErrStr = typeof simulation.error === "string"
+        ? simulation.error
+        : JSON.stringify(simulation.error ?? "");
+      const contractErr = decodeContractError(simErrStr) ?? decodeContractError(simulation);
+      if (contractErr) throw new Error(contractErr);
+      throw new Error(`Simulation failed: ${simErrStr}`);
+    }
+    preparedTx = SorobanRpc.assembleTransaction(unsignedTx, simulation).build();
+  } catch (err: unknown) {
+    if (err instanceof Error) throw err;
+    const contractErr = decodeContractError(err);
+    if (contractErr) throw new Error(contractErr);
+    throw new Error(`Simulation failed: ${String(err)}`);
+  }
+
+  let signedXDR: string;
+  try {
+    const { signedTxXdr } = await StellarWalletsKit.signTransaction(
+      preparedTx.toXDR(),
+      { networkPassphrase: Networks.TESTNET, address: adminPublicKey }
+    );
+    signedXDR = signedTxXdr;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const lc = msg.toLowerCase();
+    if (lc.includes("declined") || lc.includes("rejected") || lc.includes("cancel") || lc.includes("user denied")) {
+      throw new Error("Transaction was rejected in Freighter.");
+    }
+    throw new Error(`Signing failed: ${msg}`);
+  }
+
+  let txHash: string;
+  try {
+    const signedTx = TransactionBuilder.fromXDR(signedXDR, Networks.TESTNET);
+    const sendResult = await rpc.sendTransaction(signedTx);
+    if (sendResult.status === "ERROR") {
+      const contractErr = decodeContractError(sendResult.errorResult) ?? decodeContractError(sendResult);
+      if (contractErr) throw new Error(contractErr);
+      throw new Error(`RPC rejected the transaction.`);
+    }
+    txHash = sendResult.hash;
+
+    const MAX_ATTEMPTS = 30;
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+      await new Promise((r) => setTimeout(r, 2000));
+      const poll = await rpc.getTransaction(txHash);
+      if (poll.status === SorobanRpc.Api.GetTransactionStatus.SUCCESS) break;
+      if (poll.status === SorobanRpc.Api.GetTransactionStatus.FAILED) {
+        const contractErr = decodeContractError(poll.resultXdr) ?? decodeContractError(poll);
+        if (contractErr) throw new Error(contractErr);
+        throw new Error(`Transaction failed on-chain.`);
+      }
+      if (i === MAX_ATTEMPTS - 1) {
+        throw new Error(`Transaction ${txHash} still pending after 60 s.`);
+      }
+    }
+  } catch (err: unknown) {
+    if (err instanceof Error) throw err;
+    const contractErr = decodeContractError(err);
+    if (contractErr) throw new Error(contractErr);
+    throw new Error(`Submission failed: ${String(err)}`);
+  }
+
+  return {
+    txHash,
+    explorerUrl: `${STELLAR_EXPERT_TESTNET}/tx/${txHash}`,
+    assetSymbol: selectedAsset,
+  };
+}
+
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
 export function truncateKey(publicKey: string, startLen = 4, endLen = 4): string {
