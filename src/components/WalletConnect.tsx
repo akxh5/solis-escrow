@@ -9,6 +9,8 @@ import { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { truncateKey, formatXLM } from "@/lib/stellar";
 
+import SwapModal from "@/components/SwapModal";
+
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 const WalletIcon = () => (
@@ -53,6 +55,7 @@ export default function WalletConnect() {
   const { status, publicKey, balance, error, connect, disconnect, refreshBalance } = useWallet();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showSwapModal, setShowSwapModal] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -113,58 +116,81 @@ export default function WalletConnect() {
 
   // ── Connected ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex items-center gap-2 animate-fade-in" style={{ position: "relative" }}>
-      {/* Balance chip */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "#FFE600",
-          border: "3px solid #0A0A0A",
-          boxShadow: "3px 3px 0px #0A0A0A",
-          padding: "7px 12px",
-          fontFamily: "var(--font-mono)",
-          fontWeight: 700,
-          fontSize: "0.82rem",
-        }}
-      >
-        <span>✦</span>
-        <span>{balance ? formatXLM(balance.xlm, 2) : "—"}</span>
-        <span style={{ opacity: 0.6, fontWeight: 600 }}>XLM</span>
+    <>
+      <div className="flex items-center gap-2 animate-fade-in" style={{ position: "relative" }}>
+        {/* Swap Action Button */}
         <button
-          id="wallet-refresh-btn"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          aria-label="Refresh balance"
+          onClick={() => setShowSwapModal(true)}
+          className="btn-brutal btn-white"
           style={{
-            background: "none",
-            border: "none",
-            cursor: isRefreshing ? "default" : "pointer",
+            padding: "7px 12px",
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: "0.82rem",
+            background: "#FFF",
+            border: "3px solid #0A0A0A",
+            boxShadow: "3px 3px 0px #0A0A0A",
+            cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            opacity: isRefreshing ? 0.5 : 0.7,
-            padding: 0,
+            gap: 6,
+          }}
+          aria-label="Swap XLM to USDC"
+        >
+          ⚡ Swap (XLM ↔ USDC)
+        </button>
+
+        {/* Balance chip */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "#FFE600",
+            border: "3px solid #0A0A0A",
+            boxShadow: "3px 3px 0px #0A0A0A",
+            padding: "7px 12px",
+            fontFamily: "var(--font-mono)",
+            fontWeight: 700,
+            fontSize: "0.82rem",
           }}
         >
-          <span style={{ display: "inline-block", animation: isRefreshing ? "spin 0.65s linear infinite" : "none" }}>
-            <RefreshIcon />
-          </span>
-        </button>
-      </div>
+          <span>✦</span>
+          <span>{balance ? formatXLM(balance.xlm, 2) : "—"}</span>
+          <span style={{ opacity: 0.6, fontWeight: 600 }}>XLM</span>
+          <button
+            id="wallet-refresh-btn"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh balance"
+            style={{
+              background: "none",
+              border: "none",
+              cursor: isRefreshing ? "default" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              opacity: isRefreshing ? 0.5 : 0.7,
+              padding: 0,
+            }}
+          >
+            <span style={{ display: "inline-block", animation: isRefreshing ? "spin 0.65s linear infinite" : "none" }}>
+              <RefreshIcon />
+            </span>
+          </button>
+        </div>
 
-      {/* Address pill + dropdown */}
-      <button
-        id="wallet-address-btn"
-        className="wallet-pill-brutal"
-        onClick={() => setShowDropdown((v) => !v)}
-        aria-label="Wallet options"
-        aria-expanded={showDropdown}
-      >
-        <span className="dot-live" />
-        <span>{truncateKey(publicKey ?? "", 6, 4)}</span>
-        <ChevronIcon open={showDropdown} />
-      </button>
+        {/* Address pill + dropdown */}
+        <button
+          id="wallet-address-btn"
+          className="wallet-pill-brutal"
+          onClick={() => setShowDropdown((v) => !v)}
+          aria-label="Wallet options"
+          aria-expanded={showDropdown}
+        >
+          <span className="dot-live" />
+          <span>{truncateKey(publicKey ?? "", 6, 4)}</span>
+          <ChevronIcon open={showDropdown} />
+        </button>
 
       {/* Dropdown */}
       {showDropdown && (
@@ -240,6 +266,17 @@ export default function WalletConnect() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+
+      <SwapModal
+        isOpen={showSwapModal}
+        onClose={() => {
+          setShowSwapModal(false);
+          refreshBalance();
+        }}
+        publicKey={publicKey || ""}
+        xlmBalance={balance?.xlm || "0"}
+      />
+    </>
   );
 }
