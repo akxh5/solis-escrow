@@ -10,7 +10,7 @@
  */
 
 import { useState, useCallback } from "react";
-import type { EscrowListing, AssetSymbol } from "@/lib/escrowTypes";
+import type { EscrowListing, AssetSymbol, EscrowStatus } from "@/lib/escrowTypes";
 import {
   getTagClass,
   getStatusLabel,
@@ -121,10 +121,36 @@ export default function EscrowCard({ escrow, index }: EscrowCardProps) {
   const [pledgeSuccess, setPledgeSuccess] = useState<PledgeSuccess | null>(null);
 
   const accent       = ACCENT_MAP[escrow.accentColor] ?? ACCENT_MAP.yellow;
-  const isFullyFunded = escrow.fundingPct >= 100;
-  const isReleased    = escrow.status === "RELEASED";
   const isLiveFetchFailed = (escrow as any)._liveFetchFailed === true;
-  const canPledge     = (escrow.status === "ACTIVE" || escrow.status === "FUNDED") && !isFullyFunded && !isLiveFetchFailed;
+
+  // ── Derive pledge eligibility from status (covers on-chain + legacy values) ──
+  const isPledgeable = (s: EscrowStatus): boolean =>
+    s === "ACTIVE" || s === "FUNDED" || s === "Active";
+
+  const isFullyFunded =
+    escrow.status === "FUNDED" ||
+    escrow.status === "SuccessfulPendingRelease" ||
+    escrow.status === "Completed" ||
+    escrow.fundingPct >= 100;
+
+  const isExpired =
+    escrow.status === "EXPIRED" ||
+    escrow.status === "ExpiredRefundable";
+
+  const isReleased =
+    escrow.status === "RELEASED" || escrow.status === "Completed";
+
+  // A valid deadline means the campaign window is still open (on-chain `Active`
+  // already encodes this, but we add an extra wall-clock guard for legacy cards).
+  const hasActiveDeadline =
+    !escrow.deadlineAt || new Date(escrow.deadlineAt) > new Date();
+
+  const canPledge =
+    isPledgeable(escrow.status) &&
+    !isFullyFunded &&
+    !isExpired &&
+    !isLiveFetchFailed &&
+    hasActiveDeadline;
 
   // Called by PledgeModal on successful on-chain confirmation
   const handleModalSuccess = useCallback(
@@ -393,7 +419,9 @@ export default function EscrowCard({ escrow, index }: EscrowCardProps) {
                 <span>
                   {isLiveFetchFailed
                     ? "🚫 Campaign Unavailable"
-                    : isFullyFunded
+                    : isExpired
+                    ? "⏰ Campaign Expired"
+                    : isFullyFunded || isReleased
                     ? "✅ Goal Met — Pledges Closed"
                     : "⚡ Pledge to This Escrow"}
                 </span>
