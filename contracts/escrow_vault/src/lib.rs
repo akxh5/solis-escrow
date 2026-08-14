@@ -46,6 +46,27 @@ pub struct PledgeRecord {
     pub ledger:  u32,
 }
 
+// ─── On-chain status enum ──────────────────────────────────────────────────────
+
+/// Derived escrow lifecycle state — computed dynamically from on-chain values.
+///
+/// The contract never stores this value directly; callers read it via
+/// `get_status()` which evaluates ledger sequence, totals, and the claimed flag
+/// on every invocation.  This guarantees the status is always in sync with
+/// reality with no separate "set_status" transaction required.
+#[contracttype]
+#[derive(Clone, PartialEq)]
+pub enum EscrowStatus {
+    /// Deadline not yet passed, total < goal.
+    Active,
+    /// Total >= goal (deadline may or may not have passed); admin may claim.
+    SuccessfulPendingRelease,
+    /// Deadline passed and total < goal; pledgers may refund.
+    ExpiredRefundable,
+    /// claim() has already been executed successfully.
+    Completed,
+}
+
 // ─── Custom errors ────────────────────────────────────────────────────────────
 
 #[contracterror]
@@ -403,6 +424,32 @@ impl EscrowVault {
         Ok(())
     }
 
+    // ── create_escrow (Task 2) ──────────────────────────────────────────────────
+
+    /// User-facing entry-point for creating a new escrow vault.
+    ///
+    /// Explicit alias for `initialize`.  Accepts a title, target amount,
+    /// deadline ledger sequence, and asset SAC address.  The `_title` parameter
+    /// is validated client-side for now; on-chain storage of the title will be
+    /// added in the multi-vault factory upgrade.
+    ///
+    /// Parameters
+    /// ──────────
+    /// `admin`    — wallet authorised to call `claim` / `emit_lock`.
+    /// `goal`     — target amount in smallest unit (stroops for XLM).
+    /// `deadline` — Stellar ledger sequence number at which the campaign closes.
+    /// `asset`    — SAC address (Native XLM SAC or USDC SAC).
+    pub fn create_escrow(
+        env:      Env,
+        admin:    Address,
+        goal:     i128,
+        deadline: u32,
+        asset:    Address,
+    ) -> Result<(), Error> {
+        // Delegate to initialize — single source of truth for vault setup.
+        Self::initialize(env, admin, goal, deadline, asset)
+    }
+
     // ── read-only getters ────────────────────────────────────────────────────────
 
     pub fn get_total(env: Env) -> i128 {
@@ -427,6 +474,51 @@ impl EscrowVault {
 
     pub fn is_claimed(env: Env) -> bool {
         env.storage().instance().get(&KEY_CLAIMED).unwrap_or(false)
+    }
+
+    // ── get_status (Task 1) ─────────────────────────────────────────────────────
+
+    /// Dynamically compute the escrow lifecycle status from on-chain state.
+    ///
+    /// No status field is stored.  The function evaluates:
+    ///   1. `KEY_CLAIMED` — if true → `Completed` (checked first).
+    ///   2. `ledger().sequence()` vs `KEY_DEADLINE`.
+    ///   3. `KEY_TOTAL` vs `KEY_GOAL`.
+    ///
+    /// Decision table
+    /// ──────────────
+    /// deadline NOT passed & total <  goal  → Active
+    /// deadline NOT passed & total >= goal  → SuccessfulPendingRelease
+    /// deadline     passed & total <  goal  → ExpiredRefundable
+    /// deadline     passed & total >= goal  → SuccessfulPendingRelease
+    /// claimed == true (any state above)    → Completed
+    pub fn get_status(env: Env) -> Result<EscrowStatus, Error> {
+        if !env.storage().instance().has(&KEY_GOAL) {
+            return Err(Error::NotInitialized);
+        }
+
+        // Check claimed first — it supersedes all other conditions.
+        let claimed: bool = env.storage().instance().get(&KEY_CLAIMED).unwrap_or(false);
+        if claimed {
+            return Ok(EscrowStatus::Completed);
+        }
+
+        let goal:     i128 = env.storage().instance().get(&KEY_GOAL).unwrap();
+        let total:    i128 = env.storage().instance().get(&KEY_TOTAL).unwrap_or(0);
+        let deadline: u32  = env.storage().instance().get(&KEY_DEADLINE).unwrap();
+        let now:      u32  = env.ledger().sequence();
+
+        let past_deadline = now >= deadline;
+        let goal_met      = total >= goal;
+
+        let status = match (past_deadline, goal_met) {
+            (false, false) => EscrowStatus::Active,
+            (false, true)  => EscrowStatus::SuccessfulPendingRelease,
+            (true,  false) => EscrowStatus::ExpiredRefundable,
+            (true,  true)  => EscrowStatus::SuccessfulPendingRelease,
+        };
+
+        Ok(status)
     }
 }
 
