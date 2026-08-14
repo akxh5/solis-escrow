@@ -5,6 +5,7 @@ import { WalletProvider } from "@/context/WalletContext";
 import { EscrowProvider } from "@/context/EscrowContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { Analytics } from "@vercel/analytics/react";
+import EventListener from "@/components/EventListener";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -51,6 +52,7 @@ export default function RootLayout({
           <EscrowProvider>
             <ToastProvider>
               {children}
+              <EventListener />
             </ToastProvider>
           </EscrowProvider>
         </WalletProvider>

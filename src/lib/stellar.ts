@@ -551,3 +551,54 @@ export async function fetchContractEscrowState(contractId: string): Promise<{ go
 
   return { goalStr: goal.toString(), totalStr: total.toString() };
 }
+
+// ─── Event Polling ────────────────────────────────────────────────────────────
+
+export interface EscrowEvent {
+  type: "released" | "refunded";
+  escrowId: string;
+  amount: string;
+  contributor?: string;
+}
+
+export async function fetchEscrowEvents(startLedger?: number): Promise<{ latestLedger: number, events: EscrowEvent[] }> {
+  const rpc = getRpcServer();
+  
+  if (!startLedger) {
+    const latest = await rpc.getLatestLedger();
+    startLedger = latest.sequence;
+  }
+  
+  const releasedTopic = xdr.ScVal.scvSymbol("released").toXDR("base64");
+  const refundedTopic = xdr.ScVal.scvSymbol("refunded").toXDR("base64");
+
+  const res = await rpc.getEvents({
+    startLedger,
+    filters: [
+      {
+        type: "contract",
+        contractIds: [ESCROW_CONTRACT_ID],
+        topics: [[releasedTopic, refundedTopic]]
+      }
+    ]
+  });
+
+  const events: EscrowEvent[] = [];
+  for (const event of res.events) {
+    if (event.type !== "contract") continue;
+    try {
+      const topics = event.topic.map(t => scValToNative(xdr.ScVal.fromXDR(t, "base64")));
+      const val = scValToNative(xdr.ScVal.fromXDR(event.value.toString(), "base64"));
+      
+      if (topics[0] === "released") {
+        events.push({ type: "released", escrowId: String(topics[1]), amount: String(val) });
+      } else if (topics[0] === "refunded") {
+        events.push({ type: "refunded", escrowId: String(topics[1]), contributor: String(topics[2]), amount: String(val) });
+      }
+    } catch (e) {
+      console.warn("Failed to decode event", e);
+    }
+  }
+  
+  return { latestLedger: res.latestLedger, events };
+}
