@@ -76,6 +76,20 @@ graph TD
 - **Deploy Transaction Hash:** `1ecbedc34470695a96bfa7e8e43028591302330f8c31e0ec090b115ed1b61252`
 - **Initialize Transaction Hash:** `f3afdd415edabc1d1d05f557accca11da2b3326f969dc1d2081a1983af0ee607`
 
+### ✅ V2 Factory Contract — Level 5 (Blue Belt) · **ACTIVE**
+
+> Multi-escrow factory architecture. A single contract instance manages an unlimited number of escrow campaigns. Each campaign is uniquely identified by an on-chain `escrow_id`. The master list of all escrows is queryable via `get_all_escrows()`.
+
+- **Deployed Contract ID:** `CBELZHFXAWTDF4NLH3PTWS4N5YMA36QICRJHK5RA3LRTRDMTKSR4SCXN`
+- **Deploy Transaction:** [`ec2408a6e9e18b4a436f779deb25185d9b738de40e7a9fd7af0d820bfc467b91`](https://stellar.expert/explorer/testnet/tx/ec2408a6e9e18b4a436f779deb25185d9b738de40e7a9fd7af0d820bfc467b91)
+- **WASM Hash:** `0d876d25908e73c80b81a84428032144680fe5846dd3b630e548d88ceb391e3f`
+- **Deployed:** 2026-08-16
+- **Network:** Stellar Testnet
+- **Exported Functions (16):** `create_escrow`, `get_all_escrows`, `pledge`, `claim`, `refund`, `release_escrow_funds`, `claim_refund`, `get_status`, `get_goal`, `get_total`, `get_deadline`, `get_asset`, `get_pledge`, `is_claimed`, `emit_lock`, `emit_unlock`
+
+🔗 [View V2 Factory Contract on Stellar Expert](https://stellar.expert/explorer/testnet/contract/CBELZHFXAWTDF4NLH3PTWS4N5YMA36QICRJHK5RA3LRTRDMTKSR4SCXN)  
+🔗 [View on Stellar Lab](https://lab.stellar.org/r/testnet/contract/CBELZHFXAWTDF4NLH3PTWS4N5YMA36QICRJHK5RA3LRTRDMTKSR4SCXN)
+
 ### Testnet Transaction
 ![Testnet Transaction](testnet.png)
 

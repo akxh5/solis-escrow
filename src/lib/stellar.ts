@@ -52,7 +52,7 @@ export const STELLAR_EXPERT_TESTNET = "https://stellar.expert/explorer/testnet";
  * as soon as a valid 56-character Soroban contract strkey is present.
  */
 export const ESCROW_CONTRACT_ID =
-  "CA4ZEVCVB2N7N7M3SN3BDTRLXLNCQX4GHP7IY57MCGYTQLSWE6UO5ZMS";
+  "CBELZHFXAWTDF4NLH3PTWS4N5YMA36QICRJHK5RA3LRTRDMTKSR4SCXN";
 
 // ─── Cross-asset support ──────────────────────────────────────────────────────
 
