@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import WalletConnect from "@/components/WalletConnect";
+import NavActions from "@/components/NavActions";
 import EscrowExplorer from "@/components/EscrowExplorer";
 
 export const metadata: Metadata = {
@@ -108,24 +108,8 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Desktop nav links */}
-          <div
-            className="hidden md:flex items-center gap-1"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {["Explorer", "How it Works", "Docs"].map((label) => (
-              <a
-                key={label}
-                href="#"
-                className="nav-link"
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-
-          {/* Wallet */}
-          <WalletConnect />
+          {/* Nav links, swap button, wallet — all interactive, handled in NavActions */}
+          <NavActions />
         </nav>
       </header>
 

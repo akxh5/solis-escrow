@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { useToast } from "@/context/ToastContext";
+import { useEscrows } from "@/context/EscrowContext";
 import { createNewEscrow } from "@/lib/stellar";
 import type { AssetType } from "@/lib/stellar";
 import type { PledgeResult } from "@/lib/stellar";

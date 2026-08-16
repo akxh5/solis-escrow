@@ -774,9 +774,10 @@ export async function fetchEscrowEvents(startLedger?: number): Promise<{ latestL
   for (const event of res.events) {
     if (event.type !== "contract") continue;
     try {
-      const topics = event.topic.map(t => scValToNative(xdr.ScVal.fromXDR(t, "base64")));
-      const val = scValToNative(xdr.ScVal.fromXDR(event.value.toString(), "base64"));
-      
+      // event.topic and event.value are already xdr.ScVal instances in this SDK version
+      const topics = event.topic.map((t) => scValToNative(t as xdr.ScVal));
+      const val = scValToNative(event.value as xdr.ScVal);
+
       if (topics[0] === "released") {
         events.push({ type: "released", escrowId: String(topics[1]), amount: String(val) });
       } else if (topics[0] === "refunded") {
