@@ -76,7 +76,7 @@
           "function": {
             "contract_fn": {
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
-              "function_name": "initialize",
+              "function_name": "create_escrow",
               "args": [
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
@@ -129,6 +129,9 @@
               "function_name": "pledge",
               "args": [
                 {
+                  "u64": "1"
+                },
+                {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
                 },
                 {
@@ -174,6 +177,9 @@
               "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M",
               "function_name": "claim",
               "args": [
+                {
+                  "u64": "1"
+                },
                 {
                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
                 }
@@ -315,7 +321,14 @@
                   "storage": [
                     {
                       "key": {
-                        "symbol": "ADMIN"
+                        "vec": [
+                          {
+                            "symbol": "Admin"
+                          },
+                          {
+                            "u64": "1"
+                          }
+                        ]
                       },
                       "val": {
                         "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
@@ -323,7 +336,14 @@
                     },
                     {
                       "key": {
-                        "symbol": "ASSET"
+                        "vec": [
+                          {
+                            "symbol": "Asset"
+                          },
+                          {
+                            "u64": "1"
+                          }
+                        ]
                       },
                       "val": {
                         "address": "CBEPDNVYXQGWB5YUBXKJWYJA7OXTZW5LFLNO5JRRGE6Z6C5OSUZPCCEL"
@@ -331,7 +351,14 @@
                     },
                     {
                       "key": {
-                        "symbol": "CLAIMED"
+                        "vec": [
+                          {
+                            "symbol": "Claimed"
+                          },
+                          {
+                            "u64": "1"
+                          }
+                        ]
                       },
                       "val": {
                         "bool": true
@@ -339,7 +366,14 @@
                     },
                     {
                       "key": {
-                        "symbol": "DEADLINE"
+                        "vec": [
+                          {
+                            "symbol": "Deadline"
+                          },
+                          {
+                            "u64": "1"
+                          }
+                        ]
                       },
                       "val": {
                         "u32": 1000
@@ -347,7 +381,14 @@
                     },
                     {
                       "key": {
-                        "symbol": "GOAL"
+                        "vec": [
+                          {
+                            "symbol": "Goal"
+                          },
+                          {
+                            "u64": "1"
+                          }
+                        ]
                       },
                       "val": {
                         "i128": "50000000000"
@@ -355,7 +396,30 @@
                     },
                     {
                       "key": {
-                        "symbol": "TOTAL"
+                        "vec": [
+                          {
+                            "symbol": "MasterList"
+                          }
+                        ]
+                      },
+                      "val": {
+                        "vec": [
+                          {
+                            "u64": "1"
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "vec": [
+                          {
+                            "symbol": "Total"
+                          },
+                          {
+                            "u64": "1"
+                          }
+                        ]
                       },
                       "val": {
                         "i128": "50000000000"
@@ -401,7 +465,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 121961
       },
       {
         "entry": {
@@ -786,7 +850,7 @@
           },
           "ext": "v0"
         },
-        "live_until": 4095
+        "live_until": 121961
       }
     ]
   },
