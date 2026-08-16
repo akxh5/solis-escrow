@@ -47,6 +47,7 @@ export default function NavActions() {
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
+            marginLeft: 16,
             background: isConnected ? "#FFE600" : "rgba(255,230,0,0.12)",
             color: isConnected ? "#0A0A0A" : "#FFE600",
             border: `2px solid ${isConnected ? "#FFE600" : "rgba(255,230,0,0.35)"}`,
