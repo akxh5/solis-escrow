@@ -9,8 +9,6 @@ import { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { truncateKey, formatXLM } from "@/lib/stellar";
 
-import SwapModal from "@/components/SwapModal";
-
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
 const WalletIcon = () => (
@@ -55,7 +53,6 @@ export default function WalletConnect() {
   const { status, publicKey, balance, error, connect, disconnect, refreshBalance } = useWallet();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showSwapModal, setShowSwapModal] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -116,31 +113,8 @@ export default function WalletConnect() {
 
   // ── Connected ─────────────────────────────────────────────────────────────
   return (
-    <>
-      <div className="flex items-center gap-2 animate-fade-in" style={{ position: "relative" }}>
-        {/* Swap Action Button */}
-        <button
-          onClick={() => setShowSwapModal(true)}
-          className="btn-brutal btn-white"
-          style={{
-            padding: "7px 12px",
-            fontFamily: "var(--font-display)",
-            fontWeight: 800,
-            fontSize: "0.82rem",
-            background: "#FFF",
-            border: "3px solid #0A0A0A",
-            boxShadow: "3px 3px 0px #0A0A0A",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-          aria-label="Swap XLM to USDC"
-        >
-          ⚡ Swap (XLM ↔ USDC)
-        </button>
-
-        {/* Balance chip */}
+    <div className="flex items-center gap-2 animate-fade-in" style={{ position: "relative" }}>
+      {/* Balance chip */}
         <div
           style={{
             display: "flex",
@@ -267,16 +241,5 @@ export default function WalletConnect() {
         </div>
       )}
       </div>
-
-      <SwapModal
-        isOpen={showSwapModal}
-        onClose={() => {
-          setShowSwapModal(false);
-          refreshBalance();
-        }}
-        publicKey={publicKey || ""}
-        xlmBalance={balance?.xlm || "0"}
-      />
-    </>
   );
 }
