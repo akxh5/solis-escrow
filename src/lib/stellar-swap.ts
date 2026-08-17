@@ -199,18 +199,32 @@ export async function executeXlmToUsdcSwap(
     );
   }
 
-  // ── 3. Build PathPaymentStrictSend ──────────────────────────────────────────
+  // ── 3. Build PathPaymentStrictSend (with Auto-Trustline) ────────────────────
   //
-  // PathPaymentStrictSend guarantees the sender pays EXACTLY xlmStr XLM.
-  // The DEX finds the best path through the XLM/USDC orderbook; the recipient
-  // (self, for a swap) receives at least minStr USDC or the tx fails on-chain.
-  //
-  // destination = self (swap into own account, not a transfer)
-  // path        = []  (empty = Horizon auto-routes; fastest for direct pairs)
-  const tx = new TransactionBuilder(account, {
+  // Check if the user's account already has a trustline for USDC.
+  // If missing, prepend Operation.changeTrust to automatically enable USDC holding.
+  const hasUsdcTrustline = account.balances.some(
+    (b) =>
+      "asset_code" in b &&
+      (b as { asset_code?: string }).asset_code === "USDC" &&
+      "asset_issuer" in b &&
+      (b as { asset_issuer?: string }).asset_issuer === USDC_ISSUER
+  );
+
+  const txBuilder = new TransactionBuilder(account, {
     fee: String(Math.max(parseInt(BASE_FEE), 1000)), // 1000 stroops for DEX ops
     networkPassphrase: Networks.TESTNET,
-  })
+  });
+
+  if (!hasUsdcTrustline) {
+    txBuilder.addOperation(
+      Operation.changeTrust({
+        asset: USDC_ASSET,
+      })
+    );
+  }
+
+  const tx = txBuilder
     .addOperation(
       Operation.pathPaymentStrictSend({
         sendAsset:   XLM_ASSET,
@@ -258,6 +272,9 @@ export async function executeXlmToUsdcSwap(
     const opCode =
       hErr?.response?.data?.extras?.result_codes?.operations?.[0] ?? "";
 
+    if (opCode === "op_no_trust") {
+      throw new Error("Missing USDC trustline. Prepending changeTrust and retrying should resolve this.");
+    }
     if (opCode === "op_underfunded") {
       throw new Error("Insufficient XLM balance for this swap.");
     }

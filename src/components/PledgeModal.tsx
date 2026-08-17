@@ -162,7 +162,7 @@ export default function PledgeModal({ escrow, onClose, onSuccess }: PledgeModalP
       // ── Step 2: Sign (Freighter popup) ───────────────────────────────
       setTxStep("signing");
 
-      const resultPromise = pledgeToEscrow(publicKey, amount, selectedAsset);
+      const resultPromise = pledgeToEscrow(publicKey, amount, selectedAsset, escrow.id);
 
       // Advance progress bar optimistically while Freighter resolves
       const submitTimer  = setTimeout(() => setTxStep("submitting"), 4_500);

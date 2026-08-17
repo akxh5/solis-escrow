@@ -326,7 +326,7 @@ export default function BountyCard() {
 
       setTxStep("signing");
 
-      const resultPromise = pledgeToEscrow(publicKey, amount, selectedAsset);
+      const resultPromise = pledgeToEscrow(publicKey, amount, selectedAsset, 1);
 
       // Optimistically advance the progress bar after expected Freighter delay
       const stepTimer    = setTimeout(() => setTxStep("submitting"), 4_000);

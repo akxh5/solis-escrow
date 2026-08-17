@@ -311,7 +311,8 @@ function decodeContractError(input: unknown): string | null {
 export async function pledgeToEscrow(
   senderPublicKey: string,
   amountXLM: string,
-  selectedAsset: AssetType = "XLM"
+  selectedAsset: AssetType = "XLM",
+  escrowId: string | number = 1
 ): Promise<PledgeResult> {
   const rpc     = getRpcServer();
   const horizon = getHorizonServer();
@@ -330,51 +331,33 @@ export async function pledgeToEscrow(
   const amountFloat = parseFloat(amountXLM);
   if (isNaN(amountFloat) || amountFloat <= 0) throw new Error("Invalid pledge amount.");
 
-  // For both XLM and USDC, amounts are represented in the contract as
-  // stroops (10^-7 units). XLM and USDC both use 7 decimal places on Stellar.
-  const amountStroops = BigInt(Math.round(amountFloat * 10_000_000));
-  const pledgerScVal  = new Address(senderPublicKey).toScVal();
-  const amountScVal   = nativeToScVal(amountStroops, { type: "i128" });
-
-  let unsignedTx: ReturnType<TransactionBuilder["build"]>;
-
-  if (selectedAsset === "USDC") {
-    /**
-     * USDC path — pass the USDC Stellar Asset Contract (SAC) address as the
-     * 3rd argument to the escrow contract's `pledge(pledger, amount, asset)` fn.
-     * The contract uses this address to call SAC.transfer() on-chain.
-     */
-    const assetScVal    = new Address(USDC_CONTRACT_ID).toScVal();
-    const escrowContract = new Contract(ESCROW_CONTRACT_ID);
-
-    unsignedTx = new TransactionBuilder(senderAccount, {
-      fee: BASE_FEE,
-      networkPassphrase: Networks.TESTNET,
-    })
-      .addOperation(
-        escrowContract.call("pledge", pledgerScVal, amountScVal, assetScVal)
-      )
-      .setTimeout(180)
-      .build();
-  } else {
-    /**
-     * Native XLM path — pass the XLM SAC address as the 3rd argument.
-     * The contract validates this matches the asset stored at initialize-time,
-     * then calls XLM_SAC.transfer(pledger, contract, amount) internally.
-     */
-    const assetScVal    = new Address(XLM_SAC_CONTRACT_ID).toScVal();
-    const escrowContract = new Contract(ESCROW_CONTRACT_ID);
-
-    unsignedTx = new TransactionBuilder(senderAccount, {
-      fee: BASE_FEE,
-      networkPassphrase: Networks.TESTNET,
-    })
-      .addOperation(
-        escrowContract.call("pledge", pledgerScVal, amountScVal, assetScVal)
-      )
-      .setTimeout(180)
-      .build();
+  // Parse escrowId as u64 ScVal for Soroban V2 factory contract:
+  // pledge(env, escrow_id: u64, pledger: Address, amount: i128, asset: Address)
+  let numericEscrowId = BigInt(1);
+  if (typeof escrowId === "number") {
+    numericEscrowId = BigInt(escrowId);
+  } else if (typeof escrowId === "string") {
+    const parsed = parseInt(escrowId.replace(/\D/g, ""), 10);
+    numericEscrowId = BigInt(isNaN(parsed) || parsed <= 0 ? 1 : parsed);
   }
+
+  const escrowIdScVal = nativeToScVal(numericEscrowId, { type: "u64" });
+  const amountStroops  = BigInt(Math.round(amountFloat * 10_000_000));
+  const pledgerScVal   = new Address(senderPublicKey).toScVal();
+  const amountScVal    = nativeToScVal(amountStroops, { type: "i128" });
+  const assetAddress   = selectedAsset === "USDC" ? USDC_CONTRACT_ID : XLM_SAC_CONTRACT_ID;
+  const assetScVal     = new Address(assetAddress).toScVal();
+  const escrowContract = new Contract(ESCROW_CONTRACT_ID);
+
+  const unsignedTx = new TransactionBuilder(senderAccount, {
+    fee: BASE_FEE,
+    networkPassphrase: Networks.TESTNET,
+  })
+    .addOperation(
+      escrowContract.call("pledge", escrowIdScVal, pledgerScVal, amountScVal, assetScVal)
+    )
+    .setTimeout(180)
+    .build();
 
   // ── 3. Simulate → assemble (resource fees + Soroban auth entry) ─────────────
   let preparedTx: Transaction | FeeBumpTransaction;
