@@ -8,16 +8,18 @@ Solis Escrow allows open-source projects, backers, and developers to create trus
 
 ## 🔗 Important Links
 
-* **Live Demo URL:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)
+* **Live dApp URL:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)
+* **V2 Factory Contract ID (Testnet):** `CBELZHFXAWTDF4NLH3PTWS4N5YMA36QICRJHK5RA3LRTRDMTKSR4SCXN`
 * **User Onboarding & Feedback Responses (Google Sheets):** [View Live Responses](https://docs.google.com/spreadsheets/d/15EwnU58VthmUn2Lh-PyzVYpKFsBWX86dNFlJ4P_uGg8/edit?usp=sharing)
+
+### 📹 Video Walkthrough & Demo
+* **Level 5 Demo Video (Blue Belt - Factory Contract, Native DEX Swap & UX Iterations):** [Watch Solis Escrow Level 5 Demo Video](https://drive.google.com/file/d/1bpZdvuaBhASHDf4QFFvrwmW20WHNTrPG/view?usp=sharing)
+* **Level 4 Demo Video (Green Belt MVP - Neo-Brutalist Dashboard & Live Testnet Pledges):** [Watch Level 4 Demo Video](https://drive.google.com/file/d/1rTfmRB5bNei6n_PztPHb5Mf8Dxy_FO4a/view?usp=sharing)
+* **Level 3 Demo Video (Initial Prototype - Basic Smart Contract Interactions):** [Watch Level 3 Demo Video](https://drive.google.com/file/d/1LQuwgZo4NE4HXsH8mE1zwqwE3S5eLAAo/view?usp=sharing)
 
 ### 📊 Presentation & Pitch Deck
 * **View Online:** [View Solis Escrow Pitch Deck on Pitch](https://pitch.com/v/solis-escrow-pt5iqz)
 * **Download PDF:** [Download Solis Escrow Deck (PDF)](docs/SOLIS_ESCROW.pdf)
-
-### 📺 Project Demo Videos
-* **Level 4 (Green Belt MVP - Neo-Brutalist Dashboard & Live Testnet Pledges):** [Watch Level 4 Demo Video](https://drive.google.com/file/d/1rTfmRB5bNei6n_PztPHb5Mf8Dxy_FO4a/view?usp=sharing)
-* **Level 3 (Initial Prototype - Basic Smart Contract Interactions):** [Watch Level 3 Demo Video](https://drive.google.com/file/d/1LQuwgZo4NE4HXsH8mE1zwqwE3S5eLAAo/view?usp=sharing)
 
 ---
 
@@ -168,12 +170,20 @@ Solis Escrow meets Level 4 production standards with integrated analytics, a cro
 - **Contract:** V2 multi-asset escrow vault deployed and initialized on Stellar Testnet, supporting both **Native XLM** and **USDC** pledge flows via the Stellar Asset Contract (SAC) interface.
 - **Frontend:** Asset selector toggle (✦ Native XLM / $ Stablecoin USDC) with per-asset validation, quick-pledge presets, and context-aware success/error banners.
 
-### 👥 User Growth & Onboarding
+### 👥 User Growth & Community Feedback (50+ Testnet Users)
 
-An initial cohort of 10 unique testers performed **10 successful testnet pledge transactions** across desktop and mobile (~8s avg confirmation time). Broader community stress-testing remains ongoing.
+During Level 5 product scaling, **over 50+ unique testnet users** onboarded and tested Solis Escrow across desktop and mobile devices (~8s avg transaction confirmation time). Real user feedback directly drove contract and frontend UX refactoring:
 
 * **Live Responses (Google Sheets):** [User Onboarding & Feedback Responses](https://docs.google.com/spreadsheets/d/15EwnU58VthmUn2Lh-PyzVYpKFsBWX86dNFlJ4P_uGg8/edit?usp=sharing)  
-  *(Note: Contains verified tester details, wallet addresses, and product ratings/feedback)*
+  *(Contains verified tester details, wallet addresses, product ratings, and feedback logs)*
+
+#### 🛠️ Key User Feedback & Technical Iterations
+
+| Issue / User Feedback | Root Cause | Technical Fix & Resolution | Commit |
+|---|---|---|---|
+| **DEX Swap failing for fresh accounts (`op_no_trust`)** | New Stellar Testnet wallets lack a USDC trustline before executing Horizon DEX path payments. | Prepend `Operation.changeTrust({ asset: USDC_ASSET })` automatically if USDC trustline is missing, enabling seamless 1-click swaps for any fresh wallet. | `d482a3a` |
+| **V2 multi-escrow parameter mismatch on pledge (`MismatchingParameterLen`)** | V2 Factory Contract ABI expects `(escrow_id: u64, pledger: Address, amount: i128, asset: Address)`. | Updated `pledgeToEscrow()` in `stellar.ts` to pass `escrow_id` as `u64 ScVal` matching the V2 Factory contract signature. | `d482a3a` |
+| **Asset mismatch contract error (`#9`) on pledge** | Users could attempt to pledge XLM to a USDC-denominated escrow campaign or vice versa. | Locked `PledgeModal` asset selector toggle to the campaign's target asset (`escrow.assetSymbol`), disabling cross-asset selection with explicit tooltips. | `0137cb9` |
 
 👉 [View Level 4 Wallet Interactions & Proof Log](./docs/wallet-interactions-proof.md)  
 👉 [View Level 4 UX Feedback & Analysis](./docs/feedback-summary-basic.md)
@@ -191,4 +201,4 @@ An initial cohort of 10 unique testers performed **10 successful testnet pledge 
 
 ---
 
-*Built with ❤️ for the Level 4 (Orange Belt+) submission.*
+*Built with ❤️ for the Level 5 (Blue Belt) submission.*
