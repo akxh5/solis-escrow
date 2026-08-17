@@ -10,7 +10,7 @@ Solis Escrow allows open-source projects, backers, and developers to create trus
 
 * **Live Demo URL:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)
 
-### 📊 Project Presentation / Pitch Deck
+### 📊 Presentation & Pitch Deck
 * **View Online:** [View Solis Escrow Pitch Deck on Pitch](https://pitch.com/v/solis-escrow-pt5iqz)
 * **Download PDF:** [Download Solis Escrow Deck (PDF)](docs/SOLIS_ESCROW.pdf)
 
@@ -167,9 +167,12 @@ Solis Escrow meets Level 4 production standards with integrated analytics, a cro
 - **Contract:** V2 multi-asset escrow vault deployed and initialized on Stellar Testnet, supporting both **Native XLM** and **USDC** pledge flows via the Stellar Asset Contract (SAC) interface.
 - **Frontend:** Asset selector toggle (✦ Native XLM / $ Stablecoin USDC) with per-asset validation, quick-pledge presets, and context-aware success/error banners.
 
-### User Validation Sprint
+### 👥 User Growth & Onboarding
 
 An initial cohort of 10 unique testers performed **10 successful testnet pledge transactions** across desktop and mobile (~8s avg confirmation time). Broader community stress-testing remains ongoing.
+
+* **Live Responses (Google Sheets):** [User Onboarding & Feedback Responses](https://docs.google.com/spreadsheets/d/15EwnU58VthmUn2Lh-PyzVYpKFsBWX86dNFlJ4P_uGg8/edit?usp=sharing)  
+  *(Note: Contains verified tester details, wallet addresses, and product ratings/feedback)*
 
 👉 [View Level 4 Wallet Interactions & Proof Log](./docs/wallet-interactions-proof.md)  
 👉 [View Level 4 UX Feedback & Analysis](./docs/feedback-summary-basic.md)
