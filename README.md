@@ -9,6 +9,7 @@ Solis Escrow allows open-source projects, backers, and developers to create trus
 ## 🔗 Important Links
 
 * **Live Demo URL:** [https://solis-escrow.vercel.app/](https://solis-escrow.vercel.app/)
+* **User Onboarding & Feedback Responses (Google Sheets):** [View Live Responses](https://docs.google.com/spreadsheets/d/15EwnU58VthmUn2Lh-PyzVYpKFsBWX86dNFlJ4P_uGg8/edit?usp=sharing)
 
 ### 📊 Presentation & Pitch Deck
 * **View Online:** [View Solis Escrow Pitch Deck on Pitch](https://pitch.com/v/solis-escrow-pt5iqz)
