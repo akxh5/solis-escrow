@@ -16,7 +16,7 @@ import WalletConnect from "./WalletConnect";
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function NavActions() {
-  const { status, publicKey, balance } = useWallet();
+  const { status, publicKey, balance, refreshBalance } = useWallet();
   const [swapOpen, setSwapOpen] = useState(false);
 
   const isConnected = status === "connected" && !!publicKey;
@@ -84,7 +84,10 @@ export default function NavActions() {
       {isConnected ? (
         <SwapModal
           isOpen={swapOpen}
-          onClose={() => setSwapOpen(false)}
+          onClose={() => {
+            setSwapOpen(false);
+            refreshBalance();
+          }}
           publicKey={publicKey}
           xlmBalance={xlmBalance}
         />

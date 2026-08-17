@@ -132,6 +132,13 @@ export default function WalletConnect() {
           <span>✦</span>
           <span>{balance ? formatXLM(balance.xlm, 2) : "—"}</span>
           <span style={{ opacity: 0.6, fontWeight: 600 }}>XLM</span>
+          {balance?.usdc !== undefined && (
+            <>
+              <span style={{ opacity: 0.35 }}>|</span>
+              <span>{formatXLM(balance.usdc, 2)}</span>
+              <span style={{ opacity: 0.6, fontWeight: 600 }}>USDC</span>
+            </>
+          )}
           <button
             id="wallet-refresh-btn"
             onClick={handleRefresh}
@@ -207,7 +214,24 @@ export default function WalletConnect() {
                 marginBottom: 4,
               }}
             >
-              Stellar Testnet
+              Balances (Stellar Testnet)
+            </div>
+            <div
+              style={{
+                padding: "4px 10px 8px",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.78rem",
+                fontWeight: 700,
+                borderBottom: "1px solid rgba(10,10,10,0.1)",
+                marginBottom: 6,
+              }}
+            >
+              <div>✦ {balance ? formatXLM(balance.xlm, 2) : "0.00"} XLM</div>
+              {balance?.usdc !== undefined && (
+                <div style={{ marginTop: 2, color: "#008080" }}>
+                  $ {formatXLM(balance.usdc, 2)} USDC
+                </div>
+              )}
             </div>
             <button
               id="wallet-disconnect-btn"

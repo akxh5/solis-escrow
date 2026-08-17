@@ -147,6 +147,7 @@ function getRpcServer(): SorobanRpc.Server {
 
 export interface AccountBalance {
   xlm: string;
+  usdc?: string;
   raw: Record<string, string>;
 }
 
@@ -169,11 +170,20 @@ export async function fetchAccountBalances(
   const data = await res.json();
   const raw: Record<string, string> = {};
   let xlm = "0.0000000";
+  let usdc: string | undefined = undefined;
+
   for (const b of data.balances ?? []) {
-    if (b.asset_type === "native") xlm = b.balance;
-    else raw[b.asset_code ?? "UNKNOWN"] = b.balance;
+    if (b.asset_type === "native") {
+      xlm = b.balance;
+    } else {
+      const code = b.asset_code ?? "UNKNOWN";
+      raw[code] = b.balance;
+      if (code === "USDC" && b.asset_issuer === USDC_ISSUER) {
+        usdc = b.balance;
+      }
+    }
   }
-  return { xlm, raw };
+  return { xlm, usdc, raw };
 }
 
 // ─── Contract error decoder ───────────────────────────────────────────────────

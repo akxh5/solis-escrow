@@ -407,9 +407,14 @@ export default function PledgeModal({ escrow, onClose, onSuccess }: PledgeModalP
 
           {/* ── Asset selector (Locked to campaign asset) ── */}
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-              Asset <span style={{ opacity: 0.6, fontWeight: 600 }}>(Campaign Target: {campaignAsset})</span>
-            </p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6, flexWrap: "wrap", gap: 4 }}>
+              <p style={{ fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Asset
+              </p>
+              <span style={{ fontSize: "0.7rem", color: "rgba(10,10,10,0.55)", fontWeight: 600 }}>
+                Locked to Campaign Target Asset ({escrow.assetSymbol})
+              </span>
+            </div>
             <div style={{ display: "flex", gap: 8 }}>
               {(["XLM", "USDC"] as AssetType[]).map((asset) => {
                 const isSelected = selectedAsset === asset;
@@ -420,6 +425,7 @@ export default function PledgeModal({ escrow, onClose, onSuccess }: PledgeModalP
                     onClick={() => handleAssetChange(asset)}
                     disabled={isDisabled}
                     aria-pressed={isSelected}
+                    title={asset !== campaignAsset ? `Locked to Campaign Target Asset (${escrow.assetSymbol})` : undefined}
                     className="btn-brutal"
                     style={{
                       flex: 1,
