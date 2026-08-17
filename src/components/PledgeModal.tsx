@@ -17,7 +17,7 @@
  * On error    → red toast with decoded contract error message.
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useWallet } from "@/context/WalletContext";
 import { useEscrows } from "@/context/EscrowContext";
 import { useToast } from "@/context/ToastContext";
@@ -106,9 +106,15 @@ export default function PledgeModal({ escrow, onClose, onSuccess }: PledgeModalP
   const isConnected = status === "connected";
   const isRestoring = status === "restoring";
 
+  const campaignAsset: AssetType = (escrow.assetSymbol as AssetType) === "USDC" ? "USDC" : "XLM";
+
   // ── Local state ────────────────────────────────────────────────────────
   const [amount,          setAmount]          = useState("");
-  const [selectedAsset,   setSelectedAsset]   = useState<AssetType>(escrow.assetSymbol as AssetType);
+  const [selectedAsset,   setSelectedAsset]   = useState<AssetType>(campaignAsset);
+
+  useEffect(() => {
+    setSelectedAsset(campaignAsset);
+  }, [campaignAsset]);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [txStep,          setTxStep]          = useState<TxStep>("idle");
   const [txResult,        setTxResult]        = useState<PledgeResult | null>(null);
@@ -399,30 +405,36 @@ export default function PledgeModal({ escrow, onClose, onSuccess }: PledgeModalP
             </div>
           )}
 
-          {/* ── Asset selector ── */}
+          {/* ── Asset selector (Locked to campaign asset) ── */}
           <div style={{ marginBottom: 14 }}>
             <p style={{ fontWeight: 700, fontSize: "0.75rem", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-              Asset
+              Asset <span style={{ opacity: 0.6, fontWeight: 600 }}>(Campaign Target: {campaignAsset})</span>
             </p>
             <div style={{ display: "flex", gap: 8 }}>
-              {(["XLM", "USDC"] as AssetType[]).map((asset) => (
-                <button
-                  key={asset}
-                  onClick={() => handleAssetChange(asset)}
-                  disabled={isBusy}
-                  aria-pressed={selectedAsset === asset}
-                  className="btn-brutal"
-                  style={{
-                    flex: 1,
-                    background: selectedAsset === asset ? "#0A0A0A" : "#FFF",
-                    color:      selectedAsset === asset ? "#FFE600" : "#0A0A0A",
-                    fontSize: "0.85rem",
-                    padding: "8px 12px",
-                  }}
-                >
-                  {asset === "XLM" ? "✦ XLM" : "$ USDC"}
-                </button>
-              ))}
+              {(["XLM", "USDC"] as AssetType[]).map((asset) => {
+                const isSelected = selectedAsset === asset;
+                const isDisabled = isBusy || asset !== campaignAsset;
+                return (
+                  <button
+                    key={asset}
+                    onClick={() => handleAssetChange(asset)}
+                    disabled={isDisabled}
+                    aria-pressed={isSelected}
+                    className="btn-brutal"
+                    style={{
+                      flex: 1,
+                      background: isSelected ? "#0A0A0A" : "#FFF",
+                      color:      isSelected ? "#FFE600" : "#0A0A0A",
+                      fontSize: "0.85rem",
+                      padding: "8px 12px",
+                      opacity: asset !== campaignAsset ? 0.35 : 1,
+                      cursor: isDisabled ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {asset === "XLM" ? "✦ XLM" : "$ USDC"}
+                  </button>
+                );
+              })}
             </div>
             {selectedAsset === "USDC" && (
               <p
